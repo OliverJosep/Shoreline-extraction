@@ -16,7 +16,6 @@ class Patchify:
         self.patch_size = patch_size
         self.stride = stride
 
-    
     def load_image(self, image_path: str) -> np.array:
         """
         Loads an image from the specified path.

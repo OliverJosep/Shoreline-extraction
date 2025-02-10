@@ -1,8 +1,6 @@
 # Ignore data directories except for README.md files
-/data/raw/*
+/data/*
 !/data/raw/README.md
-/data/splits/*
-/data/patchify/*
 
 # Mac OS
 
