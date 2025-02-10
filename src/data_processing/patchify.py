@@ -1,5 +1,6 @@
 import cv2
 import os
+import shutil
 import numpy as np
 from patchify import patchify
 from typing import List, Dict
@@ -149,8 +150,11 @@ class Patchify:
         output_dir (str): The directory where the patches will be saved.
         """
 
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+        # Remove the output directory if it already exists
+        if os.path.exists(output_dir):
+            shutil.rmtree(output_dir)
+
+        os.makedirs(output_dir)
         
         for dataset, dataset_data in data.items():
             print(f"Extracting patches for {dataset} dataset...")

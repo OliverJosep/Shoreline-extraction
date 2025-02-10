@@ -4,7 +4,7 @@ import os
 
 class CoastData:
     """
-    TODO
+    Dataset class for coastal images and metadata. Designed for SCLabels dataset.
     """
 
     def __init__(self, data_path: str, name: str = "global", metadata_name: str = "metadata.json", verbose: bool = True):
