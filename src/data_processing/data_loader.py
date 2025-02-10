@@ -132,7 +132,7 @@ class CoastData:
                 'X': [],
                 'y': [],
             },
-            'val': {
+            'validation': {
                 'X': [],
                 'y': [],
             },
@@ -168,8 +168,8 @@ class CoastData:
             # Validation set
             start = end
             end = int(total * (train_size + val_size))
-            data['val']['X'].extend([entry['image'] for entry in coast_data[start:end]])
-            data['val']['y'].extend([entry['mask'] for entry in coast_data[start:end]])
+            data['validation']['X'].extend([entry['image'] for entry in coast_data[start:end]])
+            data['validation']['y'].extend([entry['mask'] for entry in coast_data[start:end]])
 
             # Test set
             if test_size > 0:

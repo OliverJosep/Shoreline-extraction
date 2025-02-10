@@ -2,7 +2,7 @@
 /data/raw/*
 !/data/raw/README.md
 /data/splits/*
-/data/patchified/*
+/data/patchify/*
 
 # Mac OS
 
