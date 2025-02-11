@@ -1,14 +1,18 @@
 import os
+import torch
 import torch.nn as nn
 
 from abc import ABC, abstractmethod
 from typing import Union, Type
 from torch.utils.data import Dataset
 from models.data_management.data_loader import DataLoaderManager
+from models.utils.loss_manager import LossManager
+from models.utils.optimizer_manager import OptimizerManager
 
-class BaseModel(ABC, nn.Module):
-    def __init__(self):
+class BaseModel(ABC):
+    def __init__(self, model: nn.Module):
         super(BaseModel, self).__init__()
+        self.model = model
 
     def load_data(self, data_source: Union[str, dict], formes_class: Type[Dataset], batch_size: int = 16) -> None:
         """
@@ -38,6 +42,80 @@ class BaseModel(ABC, nn.Module):
             self.test_formes = DataLoaderManager.generate_formes(self.data["test"]["images"], self.data["test"]["masks"], formes_class)
             self.test_loader = DataLoaderManager.generate_data_loaders(self.test_formes, batch_size, shuffle=False)
 
-    def train(self):
-        # TODO
+    def train(self, epochs: int = 100, loss_function_name: str = "CrossEntropy", optimizer_name: str = "Adam", learning_rate: float = 0.01, early_stopping: int = 25) -> None:
+        """
+        Trains the model using specified parameters.
+
+        Parameters:
+        epochs (int): The number of epochs (complete passes through the training dataset) to train the model. Default: 100
+        loss_function_name (str): The name of the loss function to use during training. Default: "CrossEntropy"
+        optimizer_name (str): The name of the optimizer to use for updating the model weights. Default: "Adam"
+        learning_rate (float): The learning rate to control the step size during weight updates. Default: 0.01
+        early_stopping (int): Number of epochs to wait for improvement before stopping the training early. Default: 25
+        TODO: MLFLOW (bool): Whether to log the training process and metrics using MLflow. Default: False
+
+        Raises:
+        ValueError: If the data loaders have not been initialized.
+
+        Returns:
+        TODO: Metrics
+        """
+
+        if (self.train_loader is None) or (self.validation_loader is None):
+            raise ValueError("Error: The data loaders have not been initialized. Please load the data before training the model.")
+        
+        # Load the loss function and optimizer
+        loss_function = LossManager.get_loss_function(loss_function_name)
+        optimizer = OptimizerManager.get_optimizer(optimizer_name, self.model.parameters(), learning_rate)
+
+        # Move the model to the device
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        # Initialize the early stopping counter. TODO: Move this to a external function or class
+        early_stopping_counter = 0
+        best_validation_loss = float('inf')
+
+        for epoch in range(epochs):
+            print(f"Epoch {epoch + 1}/{epochs}")
+
+            # Train
+            self.model.train()
+            for (input_image, target) in self.train_loader:
+                input_image = input_image.to(self.device)
+                target = target.to(self.device)
+
+                self.train_step(input_image, target, loss_function, optimizer, self.device)
+
+            # Validation    
+            self.model.eval()
+            val_loss = 0.0
+
+            with torch.no_grad():
+                for input_image, target in self.validation_loader:
+                    input_image = input_image.to(self.device)
+                    target = target.to(self.device)
+                    loss = self.validate_step(input_image, target, loss_function, self.device)
+                    val_loss += loss.item()
+
+            val_loss /= len(self.validation_loader)
+            print(f"Validation Loss: {val_loss:.4f}")
+
+            # Early stopping check. TODO: Implement this in a class.
+            if val_loss < best_validation_loss:
+                best_validation_loss = val_loss
+                early_stopping_counter = 0
+            else:
+                early_stopping_counter += 1
+                if early_stopping_counter >= early_stopping:
+                    print("Early stopping triggered.")
+                    break
+
+    @abstractmethod
+    def train_step(self, input_image, target, loss_function, optimizer, device):
+        """Defines the forward and backward pass for a single training step."""
+        pass
+
+    @abstractmethod
+    def validate_step(self, input_image, target, loss_function, device):
+        """Defines the forward pass for a single validation step."""
         pass
