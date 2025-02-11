@@ -14,6 +14,30 @@ class BaseModel(ABC):
         super(BaseModel, self).__init__()
         self.model = model
 
+    def save_model(self, path: str) -> None:
+        """
+        Save the model to the given path.
+
+        Parameters:
+        path (str): The path to save the model.
+
+        Returns:
+        None
+        """
+        torch.save(self.model.state_dict(), path)
+
+    def load_model(self, path: str) -> None:
+        """
+        Load the model from the given path.
+
+        Parameters:
+        path (str): The path to load the model.
+
+        Returns:
+        None
+        """
+        self.model.load_state_dict(torch.load(path))
+
     def load_data(self, data_source: Union[str, dict], formes_class: Type[Dataset], batch_size: int = 16) -> None:
         """
         The method to load the data from the given path.
@@ -61,6 +85,8 @@ class BaseModel(ABC):
         TODO: Metrics
         """
 
+        # TODO: Generate a new folder for each run, with the timestamp as the name, and save the model, name of the model (like UNet), logs, and metrics there.
+
         if (self.train_loader is None) or (self.validation_loader is None):
             raise ValueError("Error: The data loaders have not been initialized. Please load the data before training the model.")
         
@@ -104,6 +130,7 @@ class BaseModel(ABC):
             if val_loss < best_validation_loss:
                 best_validation_loss = val_loss
                 early_stopping_counter = 0
+                # TODO: Save the best model to a path, generate a unique name like "best_model" 
             else:
                 early_stopping_counter += 1
                 if early_stopping_counter >= early_stopping:
