@@ -129,16 +129,16 @@ class CoastData:
         # Initialize the lists for the training, validation, and test sets
         data = {
             'train': {
-                'X': [],
-                'y': [],
+                'images': [],
+                'masks': [],
             },
             'validation': {
-                'X': [],
-                'y': [],
+                'images': [],
+                'masks': [],
             },
             'test': {
-                'X': [],
-                'y': [],
+                'images': [],
+                'masks': [],
             }
         }
 
@@ -162,19 +162,19 @@ class CoastData:
             # Training set
             start = 0
             end = int(total * train_size)
-            data['train']['X'].extend([entry['image'] for entry in coast_data[start:end]])
-            data['train']['y'].extend([entry['mask'] for entry in coast_data[start:end]])
+            data['train']['images'].extend([entry['image'] for entry in coast_data[start:end]])
+            data['train']['masks'].extend([entry['mask'] for entry in coast_data[start:end]])
 
             # Validation set
             start = end
             end = int(total * (train_size + val_size))
-            data['validation']['X'].extend([entry['image'] for entry in coast_data[start:end]])
-            data['validation']['y'].extend([entry['mask'] for entry in coast_data[start:end]])
+            data['validation']['images'].extend([entry['image'] for entry in coast_data[start:end]])
+            data['validation']['masks'].extend([entry['mask'] for entry in coast_data[start:end]])
 
             # Test set
             if test_size > 0:
                 start = end
-                data['test']['X'].extend([entry['image'] for entry in coast_data[start:]])
-                data['test']['y'].extend([entry['mask'] for entry in coast_data[start:]])
+                data['test']['images'].extend([entry['image'] for entry in coast_data[start:]])
+                data['test']['masks'].extend([entry['mask'] for entry in coast_data[start:]])
 
         return data
