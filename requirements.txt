@@ -1,1 +1,2 @@
 patchify>=0.2.3
+albumentations>=2.0.4

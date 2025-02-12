@@ -1,11 +1,11 @@
 import torch
-from models.unet.architecture import UNet_architecutre
+from models.unet.architecture import UNet_architecture
 from models.base_model import BaseModel
 
-class UNetModel(BaseModel):
+class UNet(BaseModel):
     def __init__(self, num_classes: int = 2):
-        super(UNetModel, self).__init__()
-        self.model = UNet_architecutre(in_channels=3, out_channels=num_classes)
+        model = UNet_architecture(in_channels=3, out_channels=num_classes)
+        super().__init__(model)
 
     def train_step(self, input_image, target, loss_function, optimizer): # TODO: Add types and descriptions
         # Forward pass

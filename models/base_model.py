@@ -110,7 +110,7 @@ class BaseModel(ABC):
                 input_image = input_image.to(self.device)
                 target = target.to(self.device)
 
-                self.train_step(input_image, target, loss_function, optimizer, self.device)
+                self.train_step(input_image, target, loss_function, optimizer)
 
             # Validation    
             self.model.eval()

@@ -22,12 +22,15 @@ class OptimizerManager:
         optim.Optimizer: The optimizer instance.
         """
 
+        # TODO: Fix the type of model_params
         optimizers = {
-            "Adam": optim.Adam(model_params, lr=learning_rate),
-            "SGD": optim.SGD(model_params, lr=learning_rate, momentum=0.9),
-            "RMSprop": optim.RMSprop(model_params, lr=learning_rate),
+            "adam": optim.Adam(params=model_params, lr=learning_rate),
+            # "sgd": optim.SGD(params=list(model_params), lr=learning_rate, momentum=0.9)
             # TODO: Add more optimizers if needed
         }
+
+        # Transform the optimizer name to lowercase
+        optimizer_name = optimizer_name.lower()
 
         if optimizer_name not in optimizers:
             raise ValueError(f"Unknown optimizer: {optimizer_name}")

@@ -115,7 +115,28 @@ class DatasetPreprocessor:
 
         return new_img, new_mask
     
-    def process_image(self, img: np.array, mask: np.array, type_class: int = 255, background_class: int = 0) -> Tuple[np.array, np.array]:
+    def mask_mappping(self, mask: np.array, mapping: dict) -> np.array:
+        """
+        Maps the mask classes to the new classes.
+
+        Parameters:
+        mask (np.array): The mask image.
+        mapping (dict): The mapping of the classes. The key is the old class and the value is the new class.
+
+        Returns:
+        np.array: The new mask image.
+        """
+        if mapping is None:
+            return mask
+
+        new_mask = np.zeros_like(mask)
+
+        for old_class, new_class in mapping.items():
+            new_mask[mask == old_class] = new_class
+
+        return new_mask
+    
+    def process_image(self, img: np.array, mask: np.array, type_class: int = 255, background_class: int = 0, mask_mapping: dict = None) -> Tuple[np.array, np.array]:
         """
         Processes the image and mask.
 
@@ -124,6 +145,7 @@ class DatasetPreprocessor:
         mask (np.array): The mask image.
         type_class (int): The color class to transform. Default: 255
         background_class (int): The background class. Default: 0
+        mask_mapping (dict): The mapping of the classes. The key is the old class and the value is the new class. Default: None
 
         Returns:
         Tuple[np.array, np.array]: The new image and mask.
@@ -132,10 +154,11 @@ class DatasetPreprocessor:
         img, mask = self.transform_class_to_background(img, mask, type_class = 25, background_class = background_class) # 25 is the class for the not classified pixels
         img, mask = self.remove_rows_with_background(img, mask, background_class)
         img, mask = self.remove_cols_with_background(img, mask, background_class)
+        mask = self.mask_mappping(mask, mask_mapping) # 25 is the class for the not classified pixels
 
         return img, mask
 
-    def preprocess(self, dataset_path: str, dataset_output_path: str) -> None:
+    def preprocess(self, dataset_path: str, dataset_output_path: str, mask_mapping: dict = None) -> None:
         """
         Preprocesses the dataset located at the given path.
         The dataset should be organized in the following way:
@@ -154,6 +177,10 @@ class DatasetPreprocessor:
         Parameters:
         dataset_path (str): The path to the dataset.
         dataset_output_path (str): The path to save the preprocessed dataset.
+        mask_mapping (dict): The mapping of the classes. The key is the old class and the value is the new class. Default: None
+
+        Returns:
+        None
         """
 
         # Remove the output directory if it already exists
@@ -183,7 +210,7 @@ class DatasetPreprocessor:
             image = self.load_image(image_folder_path)
             mask = self.load_mask(mask_folder_path)
 
-            image, mask = self.process_image(image, mask)
+            image, mask = self.process_image(image, mask, mask_mapping=mask_mapping)
 
             output_image_path = os.path.join(output_images_path, image_folder)
             output_mask_path = os.path.join(output_masks_path, mask_folder)
