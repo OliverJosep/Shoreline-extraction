@@ -168,7 +168,7 @@ class Patchify:
             os.makedirs(x_dir, exist_ok=True)
             os.makedirs(y_dir, exist_ok=True)
 
-            for i, (image_path, mask_path) in enumerate(zip(dataset_data['X'], dataset_data['y'])):
+            for i, (image_path, mask_path) in enumerate(zip(dataset_data['images'], dataset_data['masks'])):
                 self.extract_an_image_and_save_patches(image_path, mask_path, x_dir, y_dir)
             
             print(f"Finished extracting patches for {dataset} dataset.\n")
