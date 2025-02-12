@@ -68,7 +68,13 @@ class UNet_architecture(nn.Module):
         dec1 = self.upconv1(dec2)
         dec1 = torch.cat((dec1, enc1), dim=1)
         dec1 = self.decoder1(dec1)
-        return torch.sigmoid(self.conv(dec1))
+
+        logits = self.conv(dec1)
+
+        if self.conv.out_channels > 1:
+            return torch.softmax(logits, dim=1) # multi-class segmentation
+        else:
+            return torch.sigmoid(logits) # binary segmentation
 
     @staticmethod
     def _block(in_channels, features, name):
