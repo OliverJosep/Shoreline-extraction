@@ -5,7 +5,7 @@ from models.base_model import BaseModel
 class UNet(BaseModel):
     def __init__(self, num_classes: int = 2):
         model = UNet_architecture(in_channels=3, out_channels=num_classes)
-        super().__init__(model)
+        super().__init__(model, num_classes)
 
     def train_step(self, input_image, target, loss_function, optimizer): # TODO: Add types and descriptions
         # Forward pass
@@ -25,7 +25,7 @@ class UNet(BaseModel):
         loss.backward()
         optimizer.step()
 
-        return loss.item()
+        return loss.item(), preds
 
     def validate_step(self, input_image, target, loss_function): # TODO: Add types and descriptions
         # Forward pass
@@ -40,4 +40,4 @@ class UNet(BaseModel):
         # Compute predictions
         preds = torch.argmax(output, dim=1)  # [batch_size, height, width]
 
-        return loss.item()
+        return loss.item(), preds

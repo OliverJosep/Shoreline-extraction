@@ -2,7 +2,7 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 import cv2
 
-from models.data_management.base_formes import BaseFormes
+from src.models.data_management.base_formes import BaseFormes
 from typing import List
 
 class UNetFormes(BaseFormes):

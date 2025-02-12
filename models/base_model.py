@@ -1,18 +1,22 @@
 import os
 import torch
 import torch.nn as nn
+import numpy as np
 
 from abc import ABC, abstractmethod
 from typing import Union, Type
 from torch.utils.data import Dataset
-from models.data_management.data_loader import DataLoaderManager
-from models.utils.loss_manager import LossManager
-from models.utils.optimizer_manager import OptimizerManager
+from torch import Tensor
+from src.models.data_management.data_loader import DataLoaderManager
+from src.models.utils.loss_manager import LossManager
+from src.models.utils.optimizer_manager import OptimizerManager
+from src.models.metrics import Metrics
 
 class BaseModel(ABC):
-    def __init__(self, model: nn.Module):
+    def __init__(self, model: nn.Module, classes: int = 0):
         super(BaseModel, self).__init__()
         self.model = model
+        self.classes = classes
 
     def save_model(self, path: str) -> None:
         """
@@ -96,10 +100,15 @@ class BaseModel(ABC):
 
         # Move the model to the device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        
+        self.model.to(self.device)
 
-        # Initialize the early stopping counter. TODO: Move this to a external function or class
-        early_stopping_counter = 0
-        best_validation_loss = float('inf')
+        # # Initialize the early stopping counter. TODO: Move this to a external function or class
+        # early_stopping_counter = 0
+        # best_validation_loss = float('inf')
+
+        metrics_tarin = Metrics(phase='train', num_classes=self.classes, average='macro')
+        metrics_validation = Metrics(phase='validation', num_classes=self.classes, average='macro')
 
         for epoch in range(epochs):
             print(f"Epoch {epoch + 1}/{epochs}")
@@ -110,39 +119,45 @@ class BaseModel(ABC):
                 input_image = input_image.to(self.device)
                 target = target.to(self.device)
 
-                self.train_step(input_image, target, loss_function, optimizer)
+                train_loss, preds = self.train_step(input_image, target, loss_function, optimizer)
+
+                metrics_tarin.update(preds, target, train_loss)
+
+            metrics_tarin.compute(epoch)
+            print(metrics_tarin.get_last_epoch_info())
 
             # Validation    
             self.model.eval()
-            val_loss = 0.0
 
             with torch.no_grad():
                 for input_image, target in self.validation_loader:
                     input_image = input_image.to(self.device)
                     target = target.to(self.device)
-                    loss = self.validate_step(input_image, target, loss_function, self.device)
-                    val_loss += loss.item()
 
-            val_loss /= len(self.validation_loader)
-            print(f"Validation Loss: {val_loss:.4f}")
+                    val_loss, preds = self.validate_step(input_image, target, loss_function)
+                    
+                    metrics_validation.update(preds, target, val_loss)
 
-            # Early stopping check. TODO: Implement this in a class.
-            if val_loss < best_validation_loss:
-                best_validation_loss = val_loss
-                early_stopping_counter = 0
-                # TODO: Save the best model to a path, generate a unique name like "best_model" 
-            else:
-                early_stopping_counter += 1
-                if early_stopping_counter >= early_stopping:
-                    print("Early stopping triggered.")
-                    break
+            metrics_validation.compute(epoch)
+            print(metrics_validation.get_last_epoch_info())
+
+            # # Early stopping check. TODO: Implement this in a class.
+            # if val_loss < best_validation_loss:
+            #     best_validation_loss = val_loss
+            #     early_stopping_counter = 0
+            #     # TODO: Save the best model to a path, generate a unique name like "best_model" 
+            # else:
+            #     early_stopping_counter += 1
+            #     if early_stopping_counter >= early_stopping:
+            #         print("Early stopping triggered.")
+            #         break
 
     @abstractmethod
-    def train_step(self, input_image, target, loss_function, optimizer, device):
+    def train_step(self, input_image, target, loss_function, optimizer, device) -> tuple[float, Tensor]:
         """Defines the forward and backward pass for a single training step."""
         pass
 
     @abstractmethod
-    def validate_step(self, input_image, target, loss_function, device):
+    def validate_step(self, input_image, target, loss_function, device) ->  tuple[float, Tensor]:
         """Defines the forward pass for a single validation step."""
         pass
