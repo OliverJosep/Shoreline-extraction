@@ -3,6 +3,7 @@ import mlflow.pytorch
 import os
 from datetime import datetime
 from mlflow.entities import RunStatus
+from dotenv import load_dotenv
 
 
 class MLflowManager:
@@ -13,6 +14,8 @@ class MLflowManager:
         Parameters:
         experiment_name (str): The name of the experiment to be created in MLflow.
         """
+        load_dotenv("../../.env", override=True)
+        
         mlflow_uri = os.getenv("MLFLOW_TRACKING_URI")
 
         mlflow.set_tracking_uri(mlflow_uri)
