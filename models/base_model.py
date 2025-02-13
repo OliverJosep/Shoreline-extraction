@@ -11,12 +11,29 @@ from src.models.data_management.data_loader import DataLoaderManager
 from src.models.utils.loss_manager import LossManager
 from src.models.utils.optimizer_manager import OptimizerManager
 from src.models.metrics import Metrics
+from src.models.utils.mlflow_manager import MLflowManager
 
 class BaseModel(ABC):
-    def __init__(self, model: nn.Module, classes: int = 0):
+    def __init__(self, model: nn.Module, classes: int = 0, experiment_name:str = "default_experiment", use_mlflow: bool = False) -> None:
+        """
+        Initializes the BaseModel object.
+
+        Parameters:
+        model (nn.Module): The model to use.
+        classes (int): The number of classes in the dataset. Default is 0.
+        experiment_name (str): The name of the experiment. Default: default_experiment
+        use_mlflow (bool): If True, log metrics to MLflow. Default: False
+
+        Returns:
+        None
+        """
         super(BaseModel, self).__init__()
         self.model = model
         self.classes = classes
+        self.use_mlflow = use_mlflow
+
+        if self.use_mlflow:
+            self.mlflow_manager = MLflowManager(experiment_name=experiment_name)
 
     def save_model(self, path: str) -> None:
         """
@@ -70,7 +87,7 @@ class BaseModel(ABC):
             self.test_formes = DataLoaderManager.generate_formes(self.data["test"]["images"], self.data["test"]["masks"], formes_class)
             self.test_loader = DataLoaderManager.generate_data_loaders(self.test_formes, batch_size, shuffle=False)
 
-    def train(self, epochs: int = 100, loss_function_name: str = "CrossEntropy", optimizer_name: str = "Adam", learning_rate: float = 0.01, early_stopping: int = 25) -> None:
+    def train(self, epochs: int = 100, loss_function_name: str = "CrossEntropy", optimizer_name: str = "Adam", learning_rate: float = 0.01, early_stopping: int = 25, run_name: str = None) -> None:
         """
         Trains the model using specified parameters.
 
@@ -80,7 +97,7 @@ class BaseModel(ABC):
         optimizer_name (str): The name of the optimizer to use for updating the model weights. Default: "Adam"
         learning_rate (float): The learning rate to control the step size during weight updates. Default: 0.01
         early_stopping (int): Number of epochs to wait for improvement before stopping the training early. Default: 25
-        TODO: MLFLOW (bool): Whether to log the training process and metrics using MLflow. Default: False
+        run_name (str): The name of the run. Default: None
 
         Raises:
         ValueError: If the data loaders have not been initialized.
@@ -94,63 +111,88 @@ class BaseModel(ABC):
         if (self.train_loader is None) or (self.validation_loader is None):
             raise ValueError("Error: The data loaders have not been initialized. Please load the data before training the model.")
         
-        # Load the loss function and optimizer
-        loss_function = LossManager.get_loss_function(loss_function_name)
-        optimizer = OptimizerManager.get_optimizer(optimizer_name, self.model.parameters(), learning_rate)
+        # Start the MLflow run
+        if self.use_mlflow:
+            self.mlflow_manager.start_run(run_name)
+            self.mlflow_manager.log_params({"epochs": epochs, "loss_function": loss_function_name, "optimizer": optimizer_name, "learning_rate": learning_rate, "early_stopping": early_stopping})
 
-        # Move the model to the device
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        
-        self.model.to(self.device)
 
-        # # Initialize the early stopping counter. TODO: Move this to a external function or class
-        # early_stopping_counter = 0
-        # best_validation_loss = float('inf')
+        try:
+            # Load the loss function and optimizer
+            loss_function = LossManager.get_loss_function(loss_function_name)
+            optimizer = OptimizerManager.get_optimizer(optimizer_name, self.model.parameters(), learning_rate)
 
-        metrics_tarin = Metrics(phase='train', num_classes=self.classes, average='macro')
-        metrics_validation = Metrics(phase='validation', num_classes=self.classes, average='macro')
+            # Move the model to the device
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            
+            self.model.to(self.device)
 
-        for epoch in range(epochs):
-            print(f"Epoch {epoch + 1}/{epochs}")
+            # # Initialize the early stopping counter. TODO: Move this to a external function or class
+            # early_stopping_counter = 0
+            # best_validation_loss = float('inf')
 
-            # Train
-            self.model.train()
-            for (input_image, target) in self.train_loader:
-                input_image = input_image.to(self.device)
-                target = target.to(self.device)
+            metrics_train = Metrics(phase='train', num_classes=self.classes, average='macro')
+            metrics_validation = Metrics(phase='validation', num_classes=self.classes, average='macro')
 
-                train_loss, preds = self.train_step(input_image, target, loss_function, optimizer)
+            for epoch in range(epochs):
+                print(f"Epoch {epoch + 1}/{epochs}")
 
-                metrics_tarin.update(preds, target, train_loss)
-
-            metrics_tarin.compute(epoch)
-            print(metrics_tarin.get_last_epoch_info())
-
-            # Validation    
-            self.model.eval()
-
-            with torch.no_grad():
-                for input_image, target in self.validation_loader:
+                # Train
+                self.model.train()
+                for (input_image, target) in self.train_loader:
                     input_image = input_image.to(self.device)
                     target = target.to(self.device)
 
-                    val_loss, preds = self.validate_step(input_image, target, loss_function)
-                    
-                    metrics_validation.update(preds, target, val_loss)
+                    train_loss, preds = self.train_step(input_image, target, loss_function, optimizer)
 
-            metrics_validation.compute(epoch)
-            print(metrics_validation.get_last_epoch_info())
+                    metrics_train.update(preds, target, train_loss)
 
-            # # Early stopping check. TODO: Implement this in a class.
-            # if val_loss < best_validation_loss:
-            #     best_validation_loss = val_loss
-            #     early_stopping_counter = 0
-            #     # TODO: Save the best model to a path, generate a unique name like "best_model" 
-            # else:
-            #     early_stopping_counter += 1
-            #     if early_stopping_counter >= early_stopping:
-            #         print("Early stopping triggered.")
-            #         break
+                metrics_train.compute(epoch)
+                print(metrics_train.get_last_epoch_info())
+                if self.use_mlflow:
+                    self.mlflow_manager.log_metrics(metrics_train.get_last_epoch_info_dict(), epoch)
+
+                # Validation    
+                self.model.eval()
+
+                with torch.no_grad():
+                    for input_image, target in self.validation_loader:
+                        input_image = input_image.to(self.device)
+                        target = target.to(self.device)
+
+                        val_loss, preds = self.validate_step(input_image, target, loss_function)
+                        
+                        metrics_validation.update(preds, target, val_loss)
+
+                metrics_validation.compute(epoch)
+                print(metrics_validation.get_last_epoch_info())
+                if self.use_mlflow:
+                    self.mlflow_manager.log_metrics(metrics_validation.get_last_epoch_info_dict(), epoch)
+
+                # # Early stopping check. TODO: Implement this in a class.
+                # if val_loss < best_validation_loss:
+                #     best_validation_loss = val_loss
+                #     early_stopping_counter = 0
+                #     # TODO: Save the best model to a path, generate a unique name like "best_model" 
+                # else:
+                #     early_stopping_counter += 1
+                #     if early_stopping_counter >= early_stopping:
+                #         print("Early stopping triggered.")
+                #         break
+        except KeyboardInterrupt:
+            print("Training interrupted by user. Closing MLflow run.")
+            if self.use_mlflow:
+                self.mlflow_manager.end_run(status="KILLED")
+            raise
+
+        except Exception as e:
+            print(f"Training interrupted due to an error: {e}")
+            if self.use_mlflow:
+                self.mlflow_manager.end_run(status="FAILED")
+            raise
+
+        if self.use_mlflow:
+            self.mlflow_manager.end_run()
 
     @abstractmethod
     def train_step(self, input_image, target, loss_function, optimizer, device) -> tuple[float, Tensor]:

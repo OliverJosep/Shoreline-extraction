@@ -60,6 +60,9 @@ class Metrics():
         for metric in self.metrics.values():
             text += f"\t{metric.get_name()}: {metric.get_last_metric()}\n"
         return text
+    
+    def get_last_epoch_info_dict(self):
+        return {metric.get_name(): metric.get_last_metric() for metric in self.metrics.values() if 'confusion_matrix' not in metric.get_name()}
 
     def getLastMetric(self, metric_name):
         return self.metrics[metric_name].data[-1]
