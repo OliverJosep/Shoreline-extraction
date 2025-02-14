@@ -47,7 +47,7 @@ class Patchify:
             raise FileNotFoundError(f"Mask not found at {mask_path}")
         return mask
     
-    def extract_patches(self, image_path: str, mask_path: str = None, skip_background = True) -> List[dict]:
+    def extract_patches(self, image_path: str, mask_path: str = None, skip_background: bool = True, skip_no_shoreline: int = False) -> List[dict]:
         """
         Extracts patches from the image and mask located at the given paths.
 
@@ -55,6 +55,7 @@ class Patchify:
         image_path (str): The path to the image file.
         mask_path (str): The path to the mask file. Default: None
         skip_background (bool): Whether to skip patches that do not contain any kind of pixel. Default: True
+        skip_no_shoreline (int): The value of the pixel indicating the shoreline. If the patch does not contain this value, it will be skipped. Default: None
 
         Returns:
         List[dict]: A list of dictionaries containing the image and mask patches, with row and column information.
@@ -106,8 +107,13 @@ class Patchify:
 
                 if mask_path:
                     mask_patch = patches_mask[i, j, :, :]
-                    if skip_background and np.sum(mask_patch) == 0:  # Skip patch if mask has no coastline
+                    if skip_background and np.sum(mask_patch) == 0:  # Skip patch if mask has no pixels
                         continue
+
+                    # Skip patch if mask has no skip_no_shoreline 
+                    if skip_no_shoreline is not None and np.sum(mask_patch == skip_no_shoreline) == 0:  # Check for shoreline pixels
+                        continue
+
                     patch_info['mask'] = mask_patch
                     base_name, ext = os.path.splitext(mask_path)
                     patch_info['mask_path'] = f"{base_name.split('/')[-1]}.patch.{i}_{j}{ext}"
@@ -116,7 +122,7 @@ class Patchify:
 
         return patches
     
-    def extract_an_image_and_save_patches(self, image_path: str, mask_path: str = None, output_image_dir: str = 'data/patchify/train/images', output_mask_dir: str = 'data/patchify/train/masks') -> None:
+    def extract_an_image_and_save_patches(self, image_path: str, mask_path: str = None, output_image_dir: str = 'data/patchify/train/images', output_mask_dir: str = 'data/patchify/train/masks', skip_no_shoreline: bool = False) -> None:
         """
         Extracts patches from the image and mask, and saves them to the specified directory.
 
@@ -125,6 +131,7 @@ class Patchify:
         mask_path (str): The path to the mask file. Default: None.
         output_image_dir (str): The directory where the image patches will be saved. Default: 'data/patchify/train/images'.
         output_mask_dir (str): The directory where the mask patches will be saved. Default: 'data/patchify/train/masks'.
+        skip_no_shoreline (int): The value of the pixel indicating the shoreline. If the patch does not contain this value, it will be skipped. Default: None
         """
         patches = self.extract_patches(image_path, mask_path)
         
@@ -140,7 +147,7 @@ class Patchify:
                 mask_image = patch['mask']
                 self.save_patch(mask_image, output_mask_dir, mask_name)
 
-    def extract_patches_and_save(self, data: Dict[str, Dict[str, List]], output_dir: str = 'data/patchify/') -> None:
+    def extract_patches_and_save(self, data: Dict[str, Dict[str, List]], output_dir: str = 'data/patchify/', skip_no_shoreline: int = None) -> None:
         """
         Extract patches from images and masks, and save them into the specified directory
         for training, validation, and testing datasets.
@@ -148,6 +155,7 @@ class Patchify:
         Parameters:
         data (Dict[str, Dict[str, List]]): A dictionary containing the patches for each dataset (train, val, test).
         output_dir (str): The directory where the patches will be saved.
+        skip_no_shoreline (int): The value of the pixel indicating the shoreline. If the patch does not contain this value, it will be skipped. Default: None
         """
 
         # Remove the output directory if it already exists
