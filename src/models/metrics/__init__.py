@@ -1,6 +1,8 @@
 from torcheval.metrics import MulticlassAccuracy, MulticlassF1Score, MulticlassPrecision, MulticlassRecall, MulticlassConfusionMatrix
 from src.models.metrics.torcheval_metrics import TorchevalMetric
 from src.models.metrics.loss_metrics import LossMetric
+# import binary metrics
+from torcheval.metrics import BinaryAccuracy, BinaryF1Score, BinaryPrecision, BinaryRecall, BinaryConfusionMatrix
 
 class Metrics():
     def __init__(self, phase, num_classes = None, average = 'macro'):
@@ -8,13 +10,28 @@ class Metrics():
         self.num_classes = num_classes
         self.average = average
 
-        self.general_metrics = {
-            'accuracy': TorchevalMetric(f'{phase}_accuracy', MulticlassAccuracy(num_classes=num_classes, average=average)),
-            'f1_score': TorchevalMetric(f'{phase}_f1', MulticlassF1Score(num_classes=num_classes, average=average)),
-            'precision': TorchevalMetric(f'{phase}_precision', MulticlassPrecision(num_classes=num_classes, average=average)),
-            'recall': TorchevalMetric(f'{phase}_recall', MulticlassRecall(num_classes=num_classes, average=average)),
-            'confusion_matrix': TorchevalMetric(f'{phase}_confusion_matrix', MulticlassConfusionMatrix(num_classes=num_classes, normalize="true")),
-        }
+        if num_classes is not None and num_classes > 1:
+            self.general_metrics = {
+                'accuracy': TorchevalMetric(f'{phase}_accuracy', MulticlassAccuracy(num_classes=num_classes, average=average)),
+                'f1_score': TorchevalMetric(f'{phase}_f1', MulticlassF1Score(num_classes=num_classes, average=average)),
+                'precision': TorchevalMetric(f'{phase}_precision', MulticlassPrecision(num_classes=num_classes, average=average)),
+                'recall': TorchevalMetric(f'{phase}_recall', MulticlassRecall(num_classes=num_classes, average=average)),
+                'confusion_matrix': TorchevalMetric(f'{phase}_confusion_matrix', MulticlassConfusionMatrix(num_classes=num_classes, normalize="true"))
+            }
+        else:
+            self.general_metrics = {
+                'accuracy': TorchevalMetric(f'{phase}_accuracy', BinaryAccuracy()),
+                'f1_score': TorchevalMetric(f'{phase}_f1', BinaryF1Score()),
+                'precision': TorchevalMetric(f'{phase}_precision', BinaryPrecision()),
+                'recall': TorchevalMetric(f'{phase}_recall', BinaryRecall()),
+                'confusion_matrix': TorchevalMetric(f'{phase}_confusion_matrix', BinaryConfusionMatrix(normalize="true"))
+            }
+
+        # # Add confusion matrix if num_classes is not None and num_classes > 2
+        # if num_classes is not None and num_classes > 2:
+        #     self.general_metrics['confusion_matrix'] = TorchevalMetric(
+        #         f'{phase}_confusion_matrix', MulticlassConfusionMatrix(num_classes=num_classes, normalize="true")
+        #     )
 
         self.loss_metric = {
             'loss': LossMetric(f'{phase}_loss')

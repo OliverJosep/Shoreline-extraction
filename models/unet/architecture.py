@@ -74,7 +74,8 @@ class UNet_architecture(nn.Module):
         if self.conv.out_channels > 1:
             return torch.softmax(logits, dim=1) # multi-class segmentation
         else:
-            return torch.sigmoid(logits) # binary segmentation
+            # return torch.sigmoid(logits) # binary segmentation
+            return logits   # binary segmentation
 
     @staticmethod
     def _block(in_channels, features, name):

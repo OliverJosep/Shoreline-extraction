@@ -87,7 +87,7 @@ class BaseModel(ABC):
             self.test_formes = DataLoaderManager.generate_formes(self.data["test"]["images"], self.data["test"]["masks"], formes_class)
             self.test_loader = DataLoaderManager.generate_data_loaders(self.test_formes, batch_size, shuffle=False)
 
-    def train(self, epochs: int = 100, loss_function_name: str = "CrossEntropy", optimizer_name: str = "Adam", learning_rate: float = 0.01, early_stopping: int = 25, run_name: str = None) -> None:
+    def train(self, epochs: int = 100, loss_function_name: str = "CrossEntropy", optimizer_name: str = "Adam", learning_rate: float = 0.01, early_stopping: int = 25, run_name: str = None, pos_weight: list = None) -> None:
         """
         Trains the model using specified parameters.
 
@@ -98,6 +98,7 @@ class BaseModel(ABC):
         learning_rate (float): The learning rate to control the step size during weight updates. Default: 0.01
         early_stopping (int): Number of epochs to wait for improvement before stopping the training early. Default: 25
         run_name (str): The name of the run. Default: None
+        pos_weight (list): The positive class weights for the loss function. Default
 
         Raises:
         ValueError: If the data loaders have not been initialized.
@@ -118,14 +119,17 @@ class BaseModel(ABC):
 
 
         try:
-            # Load the loss function and optimizer
-            loss_function = LossManager.get_loss_function(loss_function_name)
-            optimizer = OptimizerManager.get_optimizer(optimizer_name, self.model.parameters(), learning_rate)
-
             # Move the model to the device
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             
             self.model.to(self.device)
+
+            # Load the loss function and optimizer
+            if pos_weight:
+                pos_weight = torch.tensor(pos_weight).to(self.device)
+            loss_function = LossManager.get_loss_function(loss_function_name, pos_weight=pos_weight)
+            optimizer = OptimizerManager.get_optimizer(optimizer_name, self.model.parameters(), learning_rate)
+
 
             # # Initialize the early stopping counter. TODO: Move this to a external function or class
             # early_stopping_counter = 0
