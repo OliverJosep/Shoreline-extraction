@@ -12,6 +12,7 @@ from src.models.utils.loss_manager import LossManager
 from src.models.utils.optimizer_manager import OptimizerManager
 from src.models.metrics import Metrics
 from src.models.utils.mlflow_manager import MLflowManager
+from datetime import datetime
 
 class BaseModel(ABC):
     def __init__(self, model: nn.Module, classes: int = 0, experiment_name:str = "default_experiment", use_mlflow: bool = False) -> None:
@@ -86,8 +87,44 @@ class BaseModel(ABC):
         if "test" in self.data:
             self.test_formes = DataLoaderManager.generate_formes(self.data["test"]["images"], self.data["test"]["masks"], formes_class)
             self.test_loader = DataLoaderManager.generate_data_loaders(self.test_formes, batch_size, shuffle=False)
+    
+    def generate_folders_for_training(self, artifact_path: str, artifact_name: str = None) -> None:
+        """
+        Generates the folders for saving the logs, models, and metrics.
 
-    def train(self, epochs: int = 100, loss_function_name: str = "CrossEntropy", optimizer_name: str = "Adam", learning_rate: float = 0.01, early_stopping: int = 25, run_name: str = None, pos_weight: list = None) -> None:
+        Parameters:
+        artifact_path (str): The path to save the artifacts.
+        artifact_name (str): The name of the model. Default: None
+
+        Returns:
+        None
+        """
+
+        if not artifact_path:
+            print("No artifact path provided. Skipping the creation of folders.")
+            return
+
+        if not artifact_name:
+            artifact_name = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+
+        full_path = os.path.join(artifact_path, artifact_name)
+        print(f"Creating folders for the artifacts at {full_path}")
+        if os.path.exists(full_path):
+            # Throw an error if the path already exists
+            raise FileExistsError(f"The path {artifact_path} already exists. Please provide a new path.")
+
+        if not os.path.exists(artifact_path):
+            os.makedirs(artifact_path, exist_ok=True)
+
+        os.makedirs(full_path, exist_ok=True)
+        os.makedirs(os.path.join(full_path, "logs"), exist_ok=True)
+        os.makedirs(os.path.join(full_path, "models"), exist_ok=True)
+        os.makedirs(os.path.join(full_path, "metrics"), exist_ok=True)
+
+        self.artifact_path = full_path
+        self.artifact_name = artifact_name
+
+    def train(self, epochs: int = 100, loss_function_name: str = "CrossEntropy", optimizer_name: str = "Adam", learning_rate: float = 0.01, early_stopping: int = 25, artifact_path: str = None, run_name: str = None, pos_weight: list = None) -> None:
         """
         Trains the model using specified parameters.
 
@@ -97,6 +134,7 @@ class BaseModel(ABC):
         optimizer_name (str): The name of the optimizer to use for updating the model weights. Default: "Adam"
         learning_rate (float): The learning rate to control the step size during weight updates. Default: 0.01
         early_stopping (int): Number of epochs to wait for improvement before stopping the training early. Default: 25
+        artifact_path (str): The path to save the artifacts. Default: None
         run_name (str): The name of the run. Default: None
         pos_weight (list): The positive class weights for the loss function. Default
 
@@ -107,16 +145,17 @@ class BaseModel(ABC):
         TODO: Metrics
         """
 
-        # TODO: Generate a new folder for each run, with the timestamp as the name, and save the model, name of the model (like UNet), logs, and metrics there.
 
         if (self.train_loader is None) or (self.validation_loader is None):
             raise ValueError("Error: The data loaders have not been initialized. Please load the data before training the model.")
         
+        # TODO: Generate a new folder for each run, with the timestamp as the name, and save the model, name of the model (like UNet), logs, and metrics there. For the logs, use the logging module.
+        self.generate_folders_for_training(artifact_path=artifact_path, artifact_name=run_name)
+        
         # Start the MLflow run
         if self.use_mlflow:
-            self.mlflow_manager.start_run(run_name)
+            self.mlflow_manager.start_run(self.artifact_name)
             self.mlflow_manager.log_params({"epochs": epochs, "loss_function": loss_function_name, "optimizer": optimizer_name, "learning_rate": learning_rate, "early_stopping": early_stopping})
-
 
         try:
             # Move the model to the device
@@ -130,10 +169,9 @@ class BaseModel(ABC):
             loss_function = LossManager.get_loss_function(loss_function_name, pos_weight=pos_weight)
             optimizer = OptimizerManager.get_optimizer(optimizer_name, self.model.parameters(), learning_rate)
 
-
-            # # Initialize the early stopping counter. TODO: Move this to a external function or class
-            # early_stopping_counter = 0
-            # best_validation_loss = float('inf')
+            # Initialize the early stopping counter. TODO: Move this to a external function or class
+            early_stopping_counter = 0
+            best_validation_loss = float('inf')
 
             metrics_train = Metrics(phase='train', num_classes=self.classes, average='macro')
             metrics_validation = Metrics(phase='validation', num_classes=self.classes, average='macro')
@@ -173,29 +211,42 @@ class BaseModel(ABC):
                 if self.use_mlflow:
                     self.mlflow_manager.log_metrics(metrics_validation.get_last_epoch_info_dict(), epoch)
 
-                # # Early stopping check. TODO: Implement this in a class.
-                # if val_loss < best_validation_loss:
-                #     best_validation_loss = val_loss
-                #     early_stopping_counter = 0
-                #     # TODO: Save the best model to a path, generate a unique name like "best_model" 
-                # else:
-                #     early_stopping_counter += 1
-                #     if early_stopping_counter >= early_stopping:
-                #         print("Early stopping triggered.")
-                #         break
+                # Save the model at the end of each epoch
+                if self.artifact_path:
+                    self.save_model(os.path.join(self.artifact_path, "models", "last_epoch.pth"))
+
+                # Early stopping check. TODO: Implement this in a class.
+                if val_loss < best_validation_loss:
+                    best_validation_loss = val_loss
+                    early_stopping_counter = 0
+                    # Save the model only if the validation loss has improved and the artifact path is provided
+                    if self.artifact_path:
+                        self.save_model(os.path.join(self.artifact_path, "models", "best_model.pth"))
+                else:
+                    early_stopping_counter += 1
+                    if early_stopping_counter >= early_stopping:
+                        print("Early stopping triggered.")
+                        break
+
         except KeyboardInterrupt:
             print("Training interrupted by user. Closing MLflow run.")
             if self.use_mlflow:
+                if self.artifact_path:
+                    self.mlflow_manager.log_artifacts(self.artifact_path)
                 self.mlflow_manager.end_run(status="KILLED")
             raise
 
         except Exception as e:
             print(f"Training interrupted due to an error: {e}")
             if self.use_mlflow:
+                if self.artifact_path:
+                    self.mlflow_manager.log_artifacts(self.artifact_path)
                 self.mlflow_manager.end_run(status="FAILED")
             raise
 
         if self.use_mlflow:
+            if self.artifact_path:
+                self.mlflow_manager.log_artifacts(self.artifact_path)
             self.mlflow_manager.end_run()
 
     @abstractmethod

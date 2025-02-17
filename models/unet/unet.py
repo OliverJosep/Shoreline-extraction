@@ -41,12 +41,20 @@ class UNet(BaseModel):
         output = self.model(input_image)
 
         # Unsqueeze target to match output shape
-        target = target.squeeze(1).long()  # [batch_size, height, width]
+        if self.classes > 1:
+            target = target.squeeze(1).long()  # [batch_size, height, width]
+        else:
+            target = target.unsqueeze(1).float()  # [batch_size, 1, height, width]
 
         # Compute loss
         loss = loss_function(output, target)
 
         # Compute predictions
-        preds = torch.argmax(output, dim=1)  # [batch_size, height, width]
+        if self.classes > 1:
+            preds = torch.argmax(output, dim=1)  # [batch_size, height, width]
+        else:
+            # Apply sigmoid to output to get probabilities
+            probs = torch.sigmoid(output)  
+            preds = (probs > 0.5).float()  
 
         return loss.item(), preds

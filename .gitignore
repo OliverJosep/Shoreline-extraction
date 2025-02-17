@@ -2,6 +2,10 @@
 /data/*
 !/data/raw/README.md
 
+# Ignore artifacts directory except for README.md files
+/artifacts/*
+!/artifacts/README.md
+
 # Mac OS
 
 .DS_Store
