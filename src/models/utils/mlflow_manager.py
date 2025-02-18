@@ -47,6 +47,19 @@ class MLflowManager:
         """
         mlflow.log_params(params)
 
+    def log_tag(self, key: str, value: str):
+        """
+        Logs the tag to the MLflow run.
+
+        Parameters:
+        key (str): The key of the tag.
+        value (str): The value of the tag.
+
+        Returns:
+        None
+        """
+        mlflow.set_tag(key, value)
+
     def log_metrics(self, metrics: dict, step: int):
         """
         Logs the metrics to the MLflow run.
