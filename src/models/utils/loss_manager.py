@@ -1,6 +1,6 @@
 import torch.nn as nn
-# import tensor
 import torch
+from src.models.utils.loss_functions.dice_loss import DiceLoss
 
 
 class LossManager:
@@ -25,6 +25,7 @@ class LossManager:
         loss_functions = {
             "CrossEntropy": nn.CrossEntropyLoss(),
             "BCEWithLogitsLoss": nn.BCEWithLogitsLoss(pos_weight=pos_weight),
+            "DiceLoss": DiceLoss(weight=pos_weight), # Binary Dice Loss with optional class weighting
             # TODO: Add more loss functions here
         }
         
