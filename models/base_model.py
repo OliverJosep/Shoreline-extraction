@@ -127,7 +127,7 @@ class BaseModel(ABC):
         self.artifact_path = full_path
         self.artifact_name = artifact_name
 
-    def train(self, epochs: int = 100, loss_function_name: str = "CrossEntropy", optimizer_name: str = "Adam", learning_rate: float = 0.01, early_stopping: int = 25, artifact_path: str = None, run_name: str = None, run_description: str = None, pos_weight: list = None) -> None:
+    def train(self, epochs: int = 100, loss_function_name: str = "CrossEntropy", optimizer_name: str = "Adam", learning_rate: float = 0.01, early_stopping: int = 25, artifact_path: str = None, run_name: str = None, run_description: str = None, weight: list = None) -> None:
         """
         Trains the model using specified parameters.
 
@@ -140,7 +140,7 @@ class BaseModel(ABC):
         artifact_path (str): The path to save the artifacts. Default: None
         run_name (str): The name of the run. Default: None
         run_description (str): The description of the run. Default: None
-        pos_weight (list): The positive class weights for the loss function. Default
+        weight (list): The positive class weights for the loss function. Default
 
         Raises:
         ValueError: If the data loaders have not been initialized.
@@ -159,7 +159,7 @@ class BaseModel(ABC):
         # Start the MLflow run
         if self.use_mlflow:
             self.mlflow_manager.start_run(self.artifact_name)
-            self.mlflow_manager.log_params({"epochs": epochs, "loss_function": loss_function_name, "optimizer": optimizer_name, "learning_rate": learning_rate, "early_stopping": early_stopping, "pos_weight": pos_weight})
+            self.mlflow_manager.log_params({"epochs": epochs, "loss_function": loss_function_name, "optimizer": optimizer_name, "learning_rate": learning_rate, "early_stopping": early_stopping, "weight": weight})
             if run_description:
                 self.mlflow_manager.log_tag("mlflow.note.content", run_description)
 
@@ -170,9 +170,9 @@ class BaseModel(ABC):
             self.model.to(self.device)
 
             # Load the loss function and optimizer
-            if pos_weight:
-                pos_weight = torch.tensor(pos_weight).to(self.device)
-            loss_function = LossManager.get_loss_function(loss_function_name, pos_weight=pos_weight)
+            if weight:
+                weight = torch.tensor(weight).to(self.device)
+            loss_function = LossManager.get_loss_function(loss_function_name, weight=weight)
             optimizer = OptimizerManager.get_optimizer(optimizer_name, self.model.parameters(), learning_rate)
 
             # Initialize the early stopping counter. TODO: Move this to a external function or class

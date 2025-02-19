@@ -7,7 +7,7 @@ class LossManager:
     """Class to manage the loss functions used in the models."""
 
     @staticmethod
-    def get_loss_function(loss_function_name: str, pos_weight: torch.Tensor = None) -> nn.Module:
+    def get_loss_function(loss_function_name: str, weight: torch.Tensor = None) -> nn.Module:
         """
         Get the loss function by name.
 
@@ -24,8 +24,8 @@ class LossManager:
 
         loss_functions = {
             "CrossEntropy": nn.CrossEntropyLoss(),
-            "BCEWithLogitsLoss": nn.BCEWithLogitsLoss(pos_weight=pos_weight),
-            "DiceLoss": DiceLoss(weight=pos_weight), # Binary Dice Loss with optional class weighting
+            "BCEWithLogitsLoss": nn.BCEWithLogitsLoss(pos_weight=weight),
+            "DiceLoss": DiceLoss(weight=weight), # Binary Dice Loss with optional class weighting
             # TODO: Add more loss functions here
         }
         
