@@ -222,13 +222,16 @@ class BaseModel(ABC):
                     self.save_model(os.path.join(self.artifact_path, "models", "last_epoch.pth"))
 
                 # Early stopping check. TODO: Implement this in a class.
+                val_loss = metrics_validation.get_last_loss()
                 if val_loss < best_validation_loss:
-                    best_validation_loss = val_loss
                     early_stopping_counter = 0
+                    print(f"Validation loss improved from {best_validation_loss:.6f} to {val_loss:.6f}. Saving the model. Early stopping counter: {early_stopping_counter}/{early_stopping}")
+                    best_validation_loss = val_loss
                     # Save the model only if the validation loss has improved and the artifact path is provided
                     if self.artifact_path:
                         self.save_model(os.path.join(self.artifact_path, "models", "best_model.pth"))
                 else:
+                    print(f"Validation loss did not improve from {best_validation_loss:.46}, actual loss {val_loss:.6f}. Early stopping counter: {early_stopping_counter}/{early_stopping}")
                     early_stopping_counter += 1
                     if early_stopping_counter >= early_stopping:
                         print("Early stopping triggered.")

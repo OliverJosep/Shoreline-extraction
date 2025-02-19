@@ -81,12 +81,10 @@ class Metrics():
     def get_last_epoch_info_dict(self):
         return {metric.get_name(): metric.get_last_metric() for metric in self.metrics.values() if 'confusion_matrix' not in metric.get_name()}
 
-    def getLastMetric(self, metric_name):
-        return self.metrics[metric_name].data[-1]
-
-    def getMetricsData(self):
-        return {key: value.data for key, value in self.metrics.items()}
-    
+    def get_last_loss(self):
+        if 'loss' not in self.metrics:
+            return None
+        return self.metrics['loss'].data[-1]
 
     def get_best_metric(self, metric_name):
         return self.metrics[metric_name].get_best_metric()
