@@ -3,27 +3,54 @@ from albumentations.pytorch import ToTensorV2
 import cv2
 
 from src.models.data_management.base_formes import BaseFormes
-from typing import List
+from typing import List, Optional, Tuple
+from torch import Tensor
 
 class UNetFormes(BaseFormes):
+    """
+    Dataset class for U-Net training and inference.
 
-    def __init__(self, imgs_path: List[str], labels_path: List[str]):
+    This class loads images and their corresponding masks, applying the specified transformations.
+
+    Attributes:
+        imgs_path (List[str]): List of file paths for the input images.
+        labels_path (List[str]): List of file paths for the corresponding masks.
+        transform (A.Compose): Albumentations transformation pipeline.
+        len (int): Number of samples in the dataset.
+    """
+
+    def __init__(self, imgs_path: List[str], labels_path: List[str], transform: Optional[A.Compose] = None):
+        """
+        Initializes the UNetFormes dataset.
+
+        Parameters:
+            imgs_path (List[str]): List of file paths for the input images.
+            labels_path (List[str]): List of file paths for the corresponding masks.
+            transform (Optional[A.Compose], optional): Transformation pipeline to apply. Defaults to a standard pipeline with resizing and normalization.
+        """
         super().__init__()
 
-        self.imgs_path = imgs_path
-        self.labels_path = labels_path
+        self.imgs_path: List[str] = imgs_path
+        self.labels_path: List[str] = labels_path
+        self.len: int = len(self.imgs_path)
 
-        self.len = len(self.imgs_path)
-
-    def __getitem__(self, index):
-        # TODO Return the imag and the mask and apply the transformations
-        transform = A.Compose([
+        self.transform: A.Compose = transform if transform else A.Compose([
             A.Resize(256, 256),
-            # A.HorizontalFlip(),
-            # A.RandomRotate90(),
-            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),  # Normalize the image TODO: Check the mean and std with the dataset
+            A.Normalize(mean=(0.4288, 0.4513, 0.4601), std=(0.3172, 0.3094, 0.3120)),  # Normalization adjusted for SCLabels dataset
             ToTensorV2(),
         ])
+
+
+    def __getitem__(self, index: int) -> Tuple[Tensor, Tensor]:
+        """
+        Returns the image and mask at the specified index.
+
+        Parameters:
+            index (int): Index of the sample to retrieve.
+
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor]: Tuple containing the image and the mask.
+        """
 
         # load the image
         img = cv2.imread(self.imgs_path[index])
@@ -33,7 +60,7 @@ class UNetFormes(BaseFormes):
         mask = cv2.imread(self.labels_path[index], cv2.IMREAD_GRAYSCALE)
 
         # apply the transformations
-        data = transform(image=img, mask=mask)
+        data = self.transform(image=img, mask=mask)
         image_transformed = data['image']
         mask_transformed = data['mask']
 
