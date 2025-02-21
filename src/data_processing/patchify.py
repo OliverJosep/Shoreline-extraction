@@ -47,7 +47,7 @@ class Patchify:
             raise FileNotFoundError(f"Mask not found at {mask_path}")
         return mask
     
-    def extract_patches(self, image_path: str, mask_path: str = None, skip_background: bool = True, skip_no_shoreline: int = False) -> List[dict]:
+    def extract_patches(self, image_path: str, mask_path: str = None, skip_background: bool = True, skip_no_shoreline: int = False, padding_mode: str = "constant") -> List[dict]:
         """
         Extracts patches from the image and mask located at the given paths.
 
@@ -56,6 +56,7 @@ class Patchify:
         mask_path (str): The path to the mask file. Default: None
         skip_background (bool): Whether to skip patches that do not contain any kind of pixel. Default: True
         skip_no_shoreline (int): The value of the pixel indicating the shoreline. If the patch does not contain this value, it will be skipped. Default: None
+        padding_mode (str): The padding mode to use, either 'constant' or 'reflect'. Default: 'constant'
 
         Returns:
         List[dict]: A list of dictionaries containing the image and mask patches, with row and column information.
@@ -88,15 +89,25 @@ class Patchify:
             padding_right += 1
 
         # Pad the image
-        padded_image = np.pad(image, ((padding_top, padding_bottom), (padding_left, padding_right), (0, 0)), mode='constant', constant_values=0)
+        # padded_image = np.pad(image, ((padding_top, padding_bottom), (padding_left, padding_right), (0, 0)), mode='constant', constant_values=0)
+
+        # Pad the image based on the padding_mode
+        if padding_mode == 'reflect':
+            padded_image = np.pad(image, ((padding_top, padding_bottom), (padding_left, padding_right), (0, 0)), mode='reflect')
+        else:
+            padded_image = np.pad(image, ((padding_top, padding_bottom), (padding_left, padding_right), (0, 0)), mode='constant', constant_values=0)
 
         patches_img = patchify(padded_image, (self.patch_size, self.patch_size, 3), step=self.stride)
 
         patches = []
 
         if mask_path:
-            # Pad the mask similarly
-            padded_mask = np.pad(mask, ((padding_top, padding_bottom), (padding_left, padding_right)), mode='constant', constant_values=0)
+            # Pad the mask similarly based on the padding_mode
+            if padding_mode == 'reflect':
+                padded_mask = np.pad(mask, ((padding_top, padding_bottom), (padding_left, padding_right)), mode='reflect')
+            else:
+                padded_mask = np.pad(mask, ((padding_top, padding_bottom), (padding_left, padding_right)), mode='constant', constant_values=0)
+
             patches_mask = patchify(padded_mask, (self.patch_size, self.patch_size), step=self.stride)
 
         for i in range(patches_img.shape[0]):
@@ -111,7 +122,7 @@ class Patchify:
                         continue
 
                     # Skip patch if mask has no skip_no_shoreline 
-                    if skip_no_shoreline is not None and np.sum(mask_patch == skip_no_shoreline) == 0:  # Check for shoreline pixels
+                    if skip_no_shoreline and np.sum(mask_patch == skip_no_shoreline) == 0:  # Check for shoreline pixels
                         continue
 
                     patch_info['mask'] = mask_patch
@@ -122,7 +133,7 @@ class Patchify:
 
         return patches
     
-    def extract_an_image_and_save_patches(self, image_path: str, mask_path: str = None, output_image_dir: str = 'data/patchify/train/images', output_mask_dir: str = 'data/patchify/train/masks', skip_no_shoreline: bool = False) -> None:
+    def extract_an_image_and_save_patches(self, image_path: str, mask_path: str = None, output_image_dir: str = 'data/patchify/train/images', output_mask_dir: str = 'data/patchify/train/masks', skip_no_shoreline: bool = False, padding_mode: str = "constant") -> None:
         """
         Extracts patches from the image and mask, and saves them to the specified directory.
 
@@ -132,8 +143,9 @@ class Patchify:
         output_image_dir (str): The directory where the image patches will be saved. Default: 'data/patchify/train/images'.
         output_mask_dir (str): The directory where the mask patches will be saved. Default: 'data/patchify/train/masks'.
         skip_no_shoreline (int): The value of the pixel indicating the shoreline. If the patch does not contain this value, it will be skipped. Default: None
+        padding_mode (str): The padding mode to use, either 'constant' or 'reflect'. Default: 'constant'
         """
-        patches = self.extract_patches(image_path, mask_path)
+        patches = self.extract_patches(image_path, mask_path, padding_mode=padding_mode)
         
         # Iterate over patches and save them
         for i, patch in enumerate(patches):
@@ -147,7 +159,7 @@ class Patchify:
                 mask_image = patch['mask']
                 self.save_patch(mask_image, output_mask_dir, mask_name)
 
-    def extract_patches_and_save(self, data: Dict[str, Dict[str, List]], output_dir: str = 'data/patchify/', skip_no_shoreline: int = None) -> None:
+    def extract_patches_and_save(self, data: Dict[str, Dict[str, List]], output_dir: str = 'data/patchify/', skip_no_shoreline: int = None, padding_mode: str = "constant") -> None:
         """
         Extract patches from images and masks, and save them into the specified directory
         for training, validation, and testing datasets.
@@ -156,6 +168,7 @@ class Patchify:
         data (Dict[str, Dict[str, List]]): A dictionary containing the patches for each dataset (train, val, test).
         output_dir (str): The directory where the patches will be saved.
         skip_no_shoreline (int): The value of the pixel indicating the shoreline. If the patch does not contain this value, it will be skipped. Default: None
+        padding_mode (str): The padding mode to use, either 'constant' or 'reflect'. Default: 'constant'
         """
 
         # Remove the output directory if it already exists
@@ -177,7 +190,7 @@ class Patchify:
             os.makedirs(y_dir, exist_ok=True)
 
             for i, (image_path, mask_path) in enumerate(zip(dataset_data['images'], dataset_data['masks'])):
-                self.extract_an_image_and_save_patches(image_path, mask_path, x_dir, y_dir)
+                self.extract_an_image_and_save_patches(image_path, mask_path, x_dir, y_dir, padding_mode=padding_mode)
             
             print(f"Finished extracting patches for {dataset} dataset.\n")
 
