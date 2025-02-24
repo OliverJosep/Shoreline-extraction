@@ -2,6 +2,7 @@ import os
 import torch
 import torch.nn as nn
 import numpy as np
+import tempfile
 
 from abc import ABC, abstractmethod
 from typing import Union, Type
@@ -12,7 +13,10 @@ from src.models.utils.loss_manager import LossManager
 from src.models.utils.optimizer_manager import OptimizerManager
 from src.models.metrics import Metrics
 from src.models.utils.mlflow_manager import MLflowManager
+from src.data_processing.patchify import Patchify
+from src.data_processing.patch_reconstructor import PatchReconstructor
 from datetime import datetime
+from models.unet.unet_formes import UNetFormes
 
 class BaseModel(ABC):
     def __init__(self, model: nn.Module, classes: int = 0, experiment_name:str = "default_experiment", use_mlflow: bool = False) -> None:
@@ -60,8 +64,7 @@ class BaseModel(ABC):
         Returns:
         None
         """
-
-        self.model.load_state_dict(torch.load(path))
+        self.model.load_state_dict(torch.load(path, map_location=self.device, weights_only=True))
 
     def load_data(self, data_source: Union[str, dict], formes_class: Type[Dataset], batch_size: int = 16) -> None:
         """
@@ -269,6 +272,69 @@ class BaseModel(ABC):
         pass
 
     @abstractmethod
-    def predict(self, input_image: Tensor) -> Tensor:
+    def predict(self, input_image: Tensor, raw_output = False) -> Tensor:
         """Predicts the output for a single input image."""
         pass
+
+    def predict_patch(self, image_path: str, patch_size: int = 256, stride: int = 128, formes_class: Type[Dataset] = UNetFormes, combination: str = "avg") -> Tensor:
+        """
+        Predicts the output for an image by extracting patches and reconstructing the image.
+
+        Parameters:
+        image_path (str): The path to the image file.
+        patch_size (int): The size of the patches. Default: 256
+        stride (int): The stride for the patches. Default: 128
+        formes_class (Type[Dataset]): The class of the Form. Default: UNetFormes
+        combination (str): The method to combine the patches. Options: 'avg' or 'max'. Default: 'avg'
+
+        Raises:
+        ValueError: If the combination method is not 'avg' or 'max'.
+
+        Returns:
+        Tensor: The predicted output for the image.
+        """
+
+        # Create the patchify object
+        patchify = Patchify(patch_size=patch_size, stride=stride)
+
+        # Create a temporary directory to store the patches
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = patchify.extract_an_image_and_save_patches(image_path=image_path, output_image_dir=temp_dir)
+
+            # list of patches of the tmp directory
+            input_imgs = [f"{temp_dir}/{patch['image_path']}" for patch in result['patches']]
+
+            # Predict the output for each patch
+            output = torch.tensor([])
+            for input_img in input_imgs:
+                raw_output = self.predict(input_img, formes_class, raw_output = True)
+                output = torch.cat((output, raw_output), dim=0)
+
+        # Reconstruct the image
+        options = result['options']
+        padding = result['padding']
+
+        patch_size = options['size']
+        stride = options['stride']
+
+        # grid size
+        patches = result['patches']
+        n_rows = max(patch["row"] for patch in patches) + 1
+        n_cols = max(patch["col"] for patch in patches) + 1
+
+        orig_h = n_rows * (patch_size - stride) + stride
+        orig_w = n_cols * (patch_size - stride) + stride
+
+        if combination == "avg":
+            reconstruded = PatchReconstructor.combine_patches_avg(output, self.classes, orig_h, orig_w, patch_size, stride)
+        elif combination == "max":
+            reconstruded = PatchReconstructor.combine_patches_max(output, self.classes, orig_h, orig_w, patch_size, stride)
+        else:
+            raise ValueError("Error: The combination method must be 'avg' or 'max'.")
+
+        pred = torch.argmax(reconstruded, dim=0)
+
+        # Remove padding
+        pred = pred[padding['top']:orig_h-padding['bottom'], padding['left']:orig_w-padding['right']]
+
+        return pred

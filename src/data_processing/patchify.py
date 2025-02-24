@@ -59,7 +59,7 @@ class Patchify:
         padding_mode (str): The padding mode to use, either 'constant' or 'reflect'. Default: 'constant'
 
         Returns:
-        List[dict]: A list of dictionaries containing the image and mask patches, with row and column information.
+        dict: A dictionary containing the extracted patches and padding information.
         """
         # Load the image and mask
         image = self.load_image(image_path)
@@ -131,7 +131,19 @@ class Patchify:
 
                 patches.append(patch_info)
 
-        return patches
+        return {
+            "patches": patches,
+            "padding": {
+                "top": padding_top,
+                "bottom": padding_bottom,
+                "left": padding_left,
+                "right": padding_right
+            },
+            "options": {
+                "size": self.patch_size,
+                "stride": self.stride,
+            }
+        }
     
     def extract_an_image_and_save_patches(self, image_path: str, mask_path: str = None, output_image_dir: str = 'data/patchify/train/images', output_mask_dir: str = 'data/patchify/train/masks', skip_no_shoreline: bool = False, padding_mode: str = "constant") -> None:
         """
@@ -144,8 +156,12 @@ class Patchify:
         output_mask_dir (str): The directory where the mask patches will be saved. Default: 'data/patchify/train/masks'.
         skip_no_shoreline (int): The value of the pixel indicating the shoreline. If the patch does not contain this value, it will be skipped. Default: None
         padding_mode (str): The padding mode to use, either 'constant' or 'reflect'. Default: 'constant'
+
+        Returns:
+        dict: A dictionary containing the extracted patches and padding information.
         """
-        patches = self.extract_patches(image_path, mask_path, padding_mode=padding_mode)
+        result = self.extract_patches(image_path, mask_path, padding_mode=padding_mode)
+        patches = result["patches"]
         
         # Iterate over patches and save them
         for i, patch in enumerate(patches):
@@ -158,6 +174,8 @@ class Patchify:
                 mask_name = patch['mask_path']
                 mask_image = patch['mask']
                 self.save_patch(mask_image, output_mask_dir, mask_name)
+        
+        return result
 
     def extract_patches_and_save(self, data: Dict[str, Dict[str, List]], output_dir: str = 'data/patchify/', skip_no_shoreline: int = None, padding_mode: str = "constant") -> None:
         """
