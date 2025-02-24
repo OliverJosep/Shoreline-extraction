@@ -310,6 +310,7 @@ class BaseModel(ABC):
                 raw_output = self.predict(input_img, formes_class, raw_output = True)
                 output = torch.cat((output, raw_output), dim=0)
 
+        # TODO @OliverJosep: Put this in a function in the PatchReconstructor class 
         # Reconstruct the image
         options = result['options']
         padding = result['padding']

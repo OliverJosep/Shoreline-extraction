@@ -5,7 +5,7 @@ from src.models.metrics.loss_metrics import LossMetric
 from torcheval.metrics import BinaryAccuracy, BinaryF1Score, BinaryPrecision, BinaryRecall, BinaryConfusionMatrix
 
 class Metrics():
-    def __init__(self, phase, num_classes = None, average = 'macro'):
+    def __init__(self, phase, num_classes = None, average = 'macro', loss = True):
         self.phase = phase
         self.num_classes = num_classes
         self.average = average
@@ -33,9 +33,7 @@ class Metrics():
         #         f'{phase}_confusion_matrix', MulticlassConfusionMatrix(num_classes=num_classes, normalize="true")
         #     )
 
-        self.loss_metric = {
-            'loss': LossMetric(f'{phase}_loss')
-        }
+        self.loss_metric = {'loss': LossMetric(f'{phase}_loss')} if loss else {}
 
         self.metrics = {**self.general_metrics, **self.loss_metric}
 
@@ -49,7 +47,7 @@ class Metrics():
             if mlflow:
                 metric.log_metric(data, epoch+1)
 
-    def update(self, prediction, target, loss):
+    def update(self, prediction, target, loss = None):
         prediction = prediction.flatten()
         target = target.flatten()
         for key, metric in self.metrics.items():
