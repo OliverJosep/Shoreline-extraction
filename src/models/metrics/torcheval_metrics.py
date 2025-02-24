@@ -1,8 +1,9 @@
 import torch
 import numpy as np
+import torcheval.metrics
 
 class TorchevalMetric:
-    def __init__(self, name, metric):
+    def __init__(self, name: str, metric: torcheval.metrics):
         self.metric = metric
         self.data = []
         self.name = name
@@ -21,9 +22,6 @@ class TorchevalMetric:
         self.data.append(data)
 
         return data
-
-    # def log_metric(self, data, epoch):
-    #     mlflow.log_metric(self.name, data, step=epoch)
 
     def get_name(self):
         return self.name

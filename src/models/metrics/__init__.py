@@ -4,11 +4,17 @@ from src.models.metrics.loss_metrics import LossMetric
 # import binary metrics
 from torcheval.metrics import BinaryAccuracy, BinaryF1Score, BinaryPrecision, BinaryRecall, BinaryConfusionMatrix
 
+import numpy as np
+
 class Metrics():
-    def __init__(self, phase, num_classes = None, average = 'macro', loss = True):
+    def __init__(self, phase, num_classes = None, average = 'macro', loss = True, use_margin: bool = False, margin: int = 10):
         self.phase = phase
         self.num_classes = num_classes
         self.average = average
+
+
+        self.use_margin = use_margin
+        self.margin = margin
 
         if num_classes is not None and num_classes > 1:
             self.general_metrics = {
@@ -27,25 +33,17 @@ class Metrics():
                 'confusion_matrix': TorchevalMetric(f'{phase}_confusion_matrix', BinaryConfusionMatrix(normalize="true"))
             }
 
-        # # Add confusion matrix if num_classes is not None and num_classes > 2
-        # if num_classes is not None and num_classes > 2:
-        #     self.general_metrics['confusion_matrix'] = TorchevalMetric(
-        #         f'{phase}_confusion_matrix', MulticlassConfusionMatrix(num_classes=num_classes, normalize="true")
-        #     )
-
         self.loss_metric = {'loss': LossMetric(f'{phase}_loss')} if loss else {}
 
         self.metrics = {**self.general_metrics, **self.loss_metric}
 
-    def compute(self, epoch, mlflow=False):
+    def compute(self):
         for key, metric in self.metrics.items():
             if key == 'confusion_matrix':
                 data = metric.compute(False)
                 continue
             else:
-                data = metric.compute()
-            if mlflow:
-                metric.log_metric(data, epoch+1)
+                data = metric.compute(False)
 
     def update(self, prediction, target, loss = None):
         prediction = prediction.flatten()
@@ -97,3 +95,20 @@ class Metrics():
                 best_acc = acc
 
         return best_acc_index, best_acc, self.metrics['loss'].data[best_acc_index]
+    
+    def apply_roi(self, prediction, target):
+        coastline_indices = np.where(target == 3) # TODO: Change this to the correct value and pass it as an argument
+
+        roi_mask = np.zeros_like(target)
+
+        for row, col in zip(*coastline_indices):
+            start_col = max(col - self.margin, 0)
+            end_col = min(col + self.margin, target.shape[1])
+        
+            roi_mask[row, start_col:end_col] = 1
+
+        prediction_roi = prediction[roi_mask == 1]
+        target_roi = target[roi_mask == 1]
+
+        return prediction_roi, target_roi
+    
