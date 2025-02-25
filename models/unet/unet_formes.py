@@ -37,8 +37,7 @@ class UNetFormes(BaseFormes):
         super().__init__()
 
         self.imgs_path: List[str] = imgs_path
-        if labels_path is None:
-            self.labels_path: List[str] = labels_path
+        self.labels_path: Optional[List[str]] = labels_path or None
         self.len: int = len(self.imgs_path)
 
         self.transform = transform if transform else self.DEFAULT_TRANSFORM

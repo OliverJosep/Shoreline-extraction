@@ -182,8 +182,8 @@ class BaseModel(ABC):
             early_stopping_counter = 0
             best_validation_loss = float('inf')
 
-            metrics_train = Metrics(phase='train', num_classes=self.classes, average='macro')
-            metrics_validation = Metrics(phase='validation', num_classes=self.classes, average='macro')
+            metrics_train = Metrics(phase='train', num_classes=self.classes, average='macro', compute_loss=True)
+            metrics_validation = Metrics(phase='validation', num_classes=self.classes, average='macro', compute_loss=True)
 
             for epoch in range(epochs):
                 print(f"Epoch {epoch + 1}/{epochs}")
@@ -196,9 +196,10 @@ class BaseModel(ABC):
 
                     train_loss, preds = self.train_step(input_image, target, loss_function, optimizer)
 
-                    metrics_train.update(preds, target, train_loss)
+                    metrics_train.update_loss(train_loss)
+                    metrics_train.update_metrics(preds, target)
 
-                metrics_train.compute(epoch)
+                metrics_train.compute()
                 print(metrics_train.get_last_epoch_info())
                 if self.use_mlflow:
                     self.mlflow_manager.log_metrics(metrics_train.get_last_epoch_info_dict(), epoch)
@@ -212,10 +213,11 @@ class BaseModel(ABC):
                         target = target.to(self.device)
 
                         val_loss, preds = self.validate_step(input_image, target, loss_function)
-                        
-                        metrics_validation.update(preds, target, val_loss)
+                        # metrics_validation.update(preds, target, val_loss)
+                        metrics_validation.update_loss(val_loss)
+                        metrics_validation.update_metrics(preds, target)
 
-                metrics_validation.compute(epoch)
+                metrics_validation.compute()
                 print(metrics_validation.get_last_epoch_info())
                 if self.use_mlflow:
                     self.mlflow_manager.log_metrics(metrics_validation.get_last_epoch_info_dict(), epoch)
