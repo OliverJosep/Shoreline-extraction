@@ -3,7 +3,7 @@ from models.attention_unet.architecture import Attention_UNet_architecture
 from models.base_model import BaseModel
 from typing import Union, Type
 from torch.utils.data import Dataset
-from models.unet.unet_formes import UNetFormes
+from src.models.data_management.cnn_formes import CNNFormes
 
 
 class Attention_UNet(BaseModel):
@@ -62,13 +62,7 @@ class Attention_UNet(BaseModel):
 
         return loss.item(), preds
     
-    def predict(self, image_path, formes_class: Type[Dataset] = UNetFormes, raw_output = False): # TODO: Add types and descriptions
-
-        # transform = formes_class.DEFAULT_TRANSFORM
-        # # Apply the transformations
-        # data = transform(image=input_image)
-        # input_image = data['image']
-
+    def predict(self, image_path, formes_class: Type[Dataset] = CNNFormes, raw_output = False): # TODO: Add types and descriptions
         formes = formes_class(imgs_path=[image_path])
         input_image = formes[0] # Get the first element of the list, we only have one image
 

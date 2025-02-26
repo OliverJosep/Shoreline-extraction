@@ -16,7 +16,7 @@ from src.models.utils.mlflow_manager import MLflowManager
 from src.data_processing.patchify import Patchify
 from src.data_processing.patch_reconstructor import PatchReconstructor
 from datetime import datetime
-from models.unet.unet_formes import UNetFormes
+from src.models.data_management.cnn_formes import CNNFormes
 
 class BaseModel(ABC):
     def __init__(self, model: nn.Module, classes: int = 0, experiment_name:str = "default_experiment", use_mlflow: bool = False) -> None:
@@ -278,7 +278,7 @@ class BaseModel(ABC):
         """Predicts the output for a single input image."""
         pass
 
-    def predict_patch(self, image_path: str, patch_size: int = 256, stride: int = 128, formes_class: Type[Dataset] = UNetFormes, combination: str = "avg") -> Tensor:
+    def predict_patch(self, image_path: str, patch_size: int = 256, stride: int = 128, formes_class: Type[Dataset] = CNNFormes, combination: str = "avg") -> Tensor:
         """
         Predicts the output for an image by extracting patches and reconstructing the image.
 
@@ -286,7 +286,7 @@ class BaseModel(ABC):
         image_path (str): The path to the image file.
         patch_size (int): The size of the patches. Default: 256
         stride (int): The stride for the patches. Default: 128
-        formes_class (Type[Dataset]): The class of the Form. Default: UNetFormes
+        formes_class (Type[Dataset]): The class of the Form. Default: CNNFormes
         combination (str): The method to combine the patches. Options: 'avg' or 'max'. Default: 'avg'
 
         Raises:

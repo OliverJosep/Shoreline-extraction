@@ -1,12 +1,12 @@
-import albumentations as A
-from albumentations.pytorch import ToTensorV2
 import cv2
+import albumentations as A
 
-from src.models.data_management.base_formes import BaseFormes
+from albumentations.pytorch import ToTensorV2
+from torch.utils.data import Dataset
 from typing import List, Optional, Tuple
 from torch import Tensor
 
-class UNetFormes(BaseFormes):
+class CNNFormes(Dataset):
     """
     Dataset class for U-Net training and inference.
 
@@ -27,7 +27,7 @@ class UNetFormes(BaseFormes):
 
     def __init__(self, imgs_path: List[str], labels_path: List[str] = None, transform: Optional[A.Compose] = None):
         """
-        Initializes the UNetFormes dataset.
+        Initializes the CNNFormes dataset.
 
         Parameters:
             imgs_path (List[str]): List of file paths for the input images.
@@ -47,7 +47,6 @@ class UNetFormes(BaseFormes):
         #     A.Normalize(mean=(0.4288, 0.4513, 0.4601), std=(0.3172, 0.3094, 0.3120)),  # Normalization adjusted for SCLabels dataset
         #     ToTensorV2(),
         # ])
-
 
     def __getitem__(self, index: int) -> Tuple[Tensor, Tensor]:
         """
