@@ -152,7 +152,6 @@ class BaseModel(ABC):
         TODO: Metrics
         """
 
-
         if (self.train_loader is None) or (self.validation_loader is None):
             raise ValueError("Error: The data loaders have not been initialized. Please load the data before training the model.")
         
@@ -277,6 +276,18 @@ class BaseModel(ABC):
     def predict(self, input_image: Tensor, raw_output = False) -> Tensor:
         """Predicts the output for a single input image."""
         pass
+
+    def forward_pass(self, input_image: Tensor) -> Tensor:
+        """
+        Forward pass for the model.
+
+        Parameters:
+        input_image (Tensor): The input image.
+
+        Returns:
+        Tensor: The output of the model.
+        """
+        return self.model(input_image)
 
     def predict_patch(self, image_path: str, patch_size: int = 256, stride: int = 128, formes_class: Type[Dataset] = CNNFormes, combination: str = "avg") -> Tensor:
         """

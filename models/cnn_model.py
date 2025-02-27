@@ -1,7 +1,6 @@
 import torch
-from models.unet.architecture import UNet_architecture
 from models.base_model import BaseModel
-from typing import Union, Type
+from typing import Type
 from torch.utils.data import Dataset
 from src.models.data_management.cnn_formes import CNNFormes
 
@@ -12,7 +11,7 @@ class CNNModel(BaseModel):
 
     def train_step(self, input_image, target, loss_function, optimizer): # TODO: Add types and descriptions
         # Forward pass
-        output = self.model(input_image)
+        output = self.forward_pass(input_image)
 
         # Unsqueeze target to match output shape (only if we have more than one class)
         if self.classes > 1:
@@ -40,7 +39,7 @@ class CNNModel(BaseModel):
 
     def validate_step(self, input_image, target, loss_function): # TODO: Add types and descriptions
         # Forward pass
-        output = self.model(input_image)
+        output = self.forward_pass(input_image)
 
         # Unsqueeze target to match output shape
         if self.classes > 1:
@@ -72,7 +71,7 @@ class CNNModel(BaseModel):
         with torch.no_grad():
             input_image = input_image.to(self.device)
 
-            output = self.model(input_image)
+            output = self.forward_pass(input_image)
 
         if raw_output:
             return output
