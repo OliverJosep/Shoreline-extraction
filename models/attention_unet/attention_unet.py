@@ -1,8 +1,8 @@
 import torch
 from models.attention_unet.architecture import Attention_UNet_architecture
-from models.cnn_model import CNNFormes
+from models.cnn_model import CNNModel
 
-class Attention_UNet(CNNFormes):
+class Attention_UNet(CNNModel):
     """
     TODO: Add description
 
@@ -10,4 +10,4 @@ class Attention_UNet(CNNFormes):
     """
     def __init__(self, num_classes: int = 2, experiment_name:str = "default_experiment", use_mlflow: bool = False):
         model: torch.nn.Module = Attention_UNet_architecture(in_channels=3, out_channels=num_classes)
-        super().__init__(model = model, classes=num_classes, experiment_name=experiment_name, use_mlflow=use_mlflow)
+        super().__init__(model = model, num_classes=num_classes, experiment_name=experiment_name, use_mlflow=use_mlflow)
