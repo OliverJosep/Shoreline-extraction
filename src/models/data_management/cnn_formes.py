@@ -80,3 +80,5 @@ class CNNFormes(Dataset):
         # return the path of the image and the path of the label
         return image_transformed, mask_transformed
         
+    def __len__(self):
+        return self.len
