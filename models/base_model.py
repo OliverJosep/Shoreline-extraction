@@ -323,32 +323,16 @@ class BaseModel(ABC):
                 raw_output = self.predict(input_img, formes_class, raw_output = True)
                 output = torch.cat((output, raw_output), dim=0)
 
-        # TODO @OliverJosep: Put this in a function in the PatchReconstructor class 
-        # Reconstruct the image
-        options = result['options']
-        padding = result['padding']
-
-        patch_size = options['size']
-        stride = options['stride']
-
-        # grid size
-        patches = result['patches']
-        n_rows = max(patch["row"] for patch in patches) + 1
-        n_cols = max(patch["col"] for patch in patches) + 1
-
-        orig_h = n_rows * (patch_size - stride) + stride
-        orig_w = n_cols * (patch_size - stride) + stride
-
-        if combination == "avg":
-            reconstruded = PatchReconstructor.combine_patches_avg(output, self.classes, orig_h, orig_w, patch_size, stride)
-        elif combination == "max":
-            reconstruded = PatchReconstructor.combine_patches_max(output, self.classes, orig_h, orig_w, patch_size, stride)
-        else:
-            raise ValueError("Error: The combination method must be 'avg' or 'max'.")
-
+        # Combine the patches
+        reconstruded = PatchReconstructor.combine_patches(
+            output = output, 
+            n_classes = self.classes, 
+            patches = result['patches'],
+            padding = result['padding'],
+            patch_size = result['options']['size'],
+            method='max'
+        )
+        
         pred = torch.argmax(reconstruded, dim=0)
-
-        # Remove padding
-        pred = pred[padding['top']:orig_h-padding['bottom'], padding['left']:orig_w-padding['right']]
 
         return pred
