@@ -318,10 +318,10 @@ class BaseModel(ABC):
             input_imgs = [f"{temp_dir}/{patch['image_path']}" for patch in result['patches']]
 
             # Predict the output for each patch
-            output = torch.tensor([])
+            output = torch.tensor([], device = self.device)
             for input_img in input_imgs:
                 raw_output = self.predict(input_img, formes_class, raw_output = True)
-                output = torch.cat((output, raw_output), dim=0)
+                output = torch.cat((output, raw_output), dim = 0)
 
         # Combine the patches
         reconstruded = PatchReconstructor.combine_patches(
@@ -330,7 +330,7 @@ class BaseModel(ABC):
             patches = result['patches'],
             padding = result['padding'],
             patch_size = result['options']['size'],
-            method='max'
+            method = combination
         )
         
         pred = torch.argmax(reconstruded, dim=0)

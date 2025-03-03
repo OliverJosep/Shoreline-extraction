@@ -81,6 +81,18 @@ class Metrics():
             text += f'\t{key}: {self.metrics_history[key][-1]}' + '\n'
         return text
     
+    def get_last_epoch_info_dict(self):
+        metrics_dict = {
+            name: self.metrics_history[name][-1]  # Agafa l'últim valor guardat
+            for name in self.metrics_history
+            if "confusion_matrix" not in name and self.metrics_history[name]  # Exclou matriu i evita llistes buides
+        }
+    
+        if self.compute_loss and self.loss_history:
+            metrics_dict[f"{self.phase}_loss"] = self.loss_history[-1]  # Últim valor de la pèrdua
+
+        return metrics_dict
+    
     def apply_roi(self, prediction, target):
         coastline_indices = np.where(target == 3) # TODO: Change this to the correct value and pass it as an argument
 

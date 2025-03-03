@@ -67,6 +67,7 @@ class CNNModel(BaseModel):
         # Add the dimension of the batch
         input_image = input_image.unsqueeze(0)
 
+        self.model.to(self.device)
         self.model.eval()
         with torch.no_grad():
             input_image = input_image.to(self.device)
