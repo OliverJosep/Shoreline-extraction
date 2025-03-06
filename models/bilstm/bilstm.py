@@ -12,17 +12,19 @@ class BiLSTM(BaseModel):
     def __init__(self, num_classes: int = 1, experiment_name: str = "default_experiment", use_mlflow: bool = False, pretrained: bool = False, hidden_units: int = 45):
         model: torch.nn.Module = BiLSTM_architecture(in_channels=3, out_channels=num_classes, hidden_units = hidden_units)        
         super().__init__(model=model, classes=num_classes, experiment_name=experiment_name, use_mlflow=use_mlflow)
+        self.in_channels = 3
 
     def train_step(self, input_image, target, loss_function, optimizer): # TODO: Add types and descriptions
+        
+        # print(f"input_image shape: {input_image.shape}")
+        input_image = input_image.reshape(-1, input_image.shape[2], self.in_channels)
+
         # Forward pass
         output = self.forward_pass(input_image)
-        print(f"output shape: {output.shape}")
 
-        # Unsqueeze target to match output shape (only if we have more than one class)
-        if self.classes > 1:
-            target = target.squeeze(1).long()  # [batch_size, height, width]
-        else:
-            target = target.unsqueeze(1).float()  # [batch_size, 1, height, width]
+        target = target.unsqueeze(dim=-1) 
+        target = target.squeeze(0)
+        target = target.float()
 
         # Compute loss
         loss = loss_function(output, target)
@@ -43,14 +45,15 @@ class BiLSTM(BaseModel):
         return loss.item(), preds
 
     def validate_step(self, input_image, target, loss_function): # TODO: Add types and descriptions
+
+        input_image = input_image.reshape(-1, input_image.shape[2], self.in_channels)
+
         # Forward pass
         output = self.forward_pass(input_image)
 
-        # Unsqueeze target to match output shape
-        if self.classes > 1:
-            target = target.squeeze(1).long()  # [batch_size, height, width]
-        else:
-            target = target.unsqueeze(1).float()  # [batch_size, 1, height, width]
+        target = target.unsqueeze(dim=-1) 
+        target = target.squeeze(0)
+        target = target.float()
 
         # Compute loss
         loss = loss_function(output, target)
@@ -76,6 +79,7 @@ class BiLSTM(BaseModel):
         self.model.eval()
         with torch.no_grad():
             input_image = input_image.to(self.device)
+            input_image = input_image.reshape(-1, input_image.shape[2], self.in_channels)
 
             output = self.forward_pass(input_image)
 

@@ -48,6 +48,14 @@ class DatasetPreprocessorBiLSTM(DatasetPreprocessor):
                             break
             # break
         return mask
+    
+    def add_padding(self, img: np.array, mask: np.array, max_width: int = 801) -> Tuple[np.array, np.array]:
+        img_shape = img.shape
+        mask_shape = mask.shape
+        if img_shape[1] < max_width:
+            img = np.pad(img, ((0, 0), (0, max_width - img_shape[1]), (0, 0)), mode='constant')
+            mask = np.pad(mask, ((0, 0), (0, max_width - mask_shape[1])), mode='edge')
+        return img, mask
 
     def process_image(self, img: np.array, mask: np.array, type_class: int = 255, background_class: int = 0, mask_mapping: dict = None) -> Tuple[np.array, np.array]:
         img, mask = self.get_rows_with_class(img, mask, type_class)
@@ -57,5 +65,6 @@ class DatasetPreprocessorBiLSTM(DatasetPreprocessor):
         mask = self.mask_mappping(mask, mask_mapping) # 25 is the class for the not classified pixels
         img, mask = self.remove_rows_with_only_one_class(img, mask)
         mask = self.to_binary_mask(mask, type_class = 2)
+        # img, mask = self.add_padding(img, mask, max_width=801) # Not needed with batch size 1
 
         return img, mask

@@ -15,5 +15,5 @@ class BiLSTM_architecture(nn.Module):
         if self.out_channels > 1:
             return torch.softmax(out, dim=1) # multi-class segmentation
         else:
-            # return torch.sigmoid(logits) # binary segmentation
+            # return torch.sigmoid(out) # binary segmentation
             return out   # binary segmentation

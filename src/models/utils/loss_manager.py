@@ -24,6 +24,7 @@ class LossManager:
 
         loss_functions = {
             "CrossEntropy": nn.CrossEntropyLoss(),
+            "BCELoss": nn.BCELoss(),
             "BCEWithLogitsLoss": nn.BCEWithLogitsLoss(pos_weight=weight),
             "DiceLoss": DiceLoss(weight=weight), # Binary Dice Loss with optional class weighting
             # TODO: Add more loss functions here
