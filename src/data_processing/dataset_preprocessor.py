@@ -2,6 +2,7 @@ import os
 import cv2
 import numpy as np
 import shutil
+import json
 
 from typing import Tuple
 
@@ -215,5 +216,39 @@ class DatasetPreprocessor:
             output_image_path = os.path.join(output_images_path, image_folder)
             output_mask_path = os.path.join(output_masks_path, mask_folder)
 
+            cv2.imwrite(output_image_path, image)
+            cv2.imwrite(output_mask_path, mask)
+
+    def preprocess_from_metadata(self, metadata: list, dataset_path: str, dataset_output_path: str, mask_mapping: dict = None) -> None:
+        """
+        TODO: Add description
+        """
+
+        # Remove the output directory if it already exists
+        if os.path.exists(dataset_output_path):
+            shutil.rmtree(dataset_output_path)
+        
+        # Create the output directories
+        output_images_path = os.path.join(dataset_output_path, "images")
+        output_masks_path = os.path.join(dataset_output_path, "masks")
+        os.makedirs(output_images_path, exist_ok=True)
+        os.makedirs(output_masks_path, exist_ok=True)
+
+        # Copy the metadata file, firts we need to create the metadata file
+        metadata_output_path = os.path.join(dataset_output_path, "metadata.json")
+        with open(metadata_output_path, 'w') as f:
+            json.dump(metadata, f)
+            
+        for i, (image_path, mask_path) in enumerate(dataset_path):
+            image = self.load_image(dataset_path[i][image_path])
+            mask = self.load_mask(dataset_path[i][mask_path])
+
+            image, mask = self.process_image(image, mask, mask_mapping=mask_mapping)
+
+            image_path_output = os.path.join(output_images_path, os.path.basename(dataset_path[i][image_path]))
+            mask_path_output = os.path.join(output_masks_path, os.path.basename(dataset_path[i][mask_path]))
+
+            output_image_path = os.path.join(output_images_path, image_path_output)
+            output_mask_path = os.path.join(output_masks_path, mask_path_output)
             cv2.imwrite(output_image_path, image)
             cv2.imwrite(output_mask_path, mask)

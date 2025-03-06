@@ -13,30 +13,21 @@ class DatasetPreprocessorBiLSTM(DatasetPreprocessor):
 
     def remove_rows_with_only_one_class(self, img: np.array, mask: np.array) -> Tuple[np.array, np.array]:
         for i in range(mask.shape[0]):
-            # class1 = np.where(mask[i, :] == 0)[0]
-            # print(mask.shape[0])
-            # print(i)
-            # print(mask[i, :])
             if i >= mask.shape[0]:
                 print(f"Índice {i} fuera de rango para la máscara con tamaño {mask.shape[0]}")
                 continue
             class1 = np.where(mask[i, :] == 0)
             class2 = np.where(mask[i, :] == 1)
-            # class2 = np.where(mask[i, :] == 1)[0]
 
             if len(class1) > 0:
                 class1 = class1[0]
             if len(class2) > 0:
                 class2 = class2[0]
 
-            # print(f"Row {i} has {len(class1)} class 0 and {len(class2)} class 1")
             if len(class1) == 0 or len(class2) == 0:
-                # print(f"Removing row {i}")
-                # remove row
                 img = np.delete(img, i, axis=0)
                 mask = np.delete(mask, i, axis=0)
         return img, mask
-
 
     def to_binary_mask(self, mask: np.array, type_class: int = 2) -> np.array:
         rows_shape = mask.shape[0]
