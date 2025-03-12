@@ -112,6 +112,8 @@ class BaseModel(ABC):
 
         if not artifact_name:
             artifact_name = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        else:
+            artifact_name = f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}_{artifact_name}"
 
         full_path = os.path.join(artifact_path, artifact_name)
         print(f"Creating folders for the artifacts at {full_path}")
@@ -181,8 +183,8 @@ class BaseModel(ABC):
             early_stopping_counter = 0
             best_validation_loss = float('inf')
 
-            metrics_train = Metrics(phase='train', num_classes=self.classes, average='macro', compute_loss=True)
-            metrics_validation = Metrics(phase='validation', num_classes=self.classes, average='macro', compute_loss=True)
+            metrics_train = Metrics(phase='train', num_classes=self.classes, average='macro', compute_loss=True, save_path=self.artifact_path)
+            metrics_validation = Metrics(phase='validation', num_classes=self.classes, average='macro', compute_loss=True, save_path=self.artifact_path)
 
             for epoch in range(epochs):
                 print(f"Epoch {epoch + 1}/{epochs}")
@@ -200,6 +202,7 @@ class BaseModel(ABC):
 
                 metrics_train.compute()
                 print(metrics_train.get_last_epoch_info())
+                metrics_train.save_metrics_to_json()
                 if self.use_mlflow:
                     self.mlflow_manager.log_metrics(metrics_train.get_last_epoch_info_dict(), epoch)
 
@@ -218,6 +221,7 @@ class BaseModel(ABC):
 
                 metrics_validation.compute()
                 print(metrics_validation.get_last_epoch_info())
+                metrics_validation.save_metrics_to_json()
                 if self.use_mlflow:
                     self.mlflow_manager.log_metrics(metrics_validation.get_last_epoch_info_dict(), epoch)
 
@@ -234,6 +238,8 @@ class BaseModel(ABC):
                     # Save the model only if the validation loss has improved and the artifact path is provided
                     if self.artifact_path:
                         self.save_model(os.path.join(self.artifact_path, "models", "best_model.pth"))
+                        if self.use_mlflow:
+                            self.mlflow_manager.log_artifacts(self.artifact_path)
                 else:
                     print(f"Validation loss did not improve from {best_validation_loss:.46}, actual loss {val_loss:.6f}. Early stopping counter: {early_stopping_counter}/{early_stopping}")
                     early_stopping_counter += 1

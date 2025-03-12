@@ -5,12 +5,16 @@ from torcheval.metrics import (
 )
 import torch
 import numpy as np
+import csv
+import json
 
 class Metrics():
-    def __init__(self, phase: str, num_classes: int = 1, average: str = 'macro', compute_loss: bool = False, use_margin: bool = False, margin: int = 10):
+    def __init__(self, phase: str, num_classes: int = 1, average: str = 'macro', compute_loss: bool = False, use_margin: bool = False, margin: int = 10, save_path: str = None):
         self.phase = phase
         self.num_classes = num_classes
         self.average = average
+
+        self.save_path = save_path
 
         self.use_margin = use_margin
         self.margin = margin
@@ -109,3 +113,33 @@ class Metrics():
 
         return prediction_roi, target_roi
     
+    def save_metrics_to_json(self):
+        # Save the entire history of metrics to JSON
+        if self.save_path is None:
+            return # Do not save if no path is provided
+        
+        path = f"{self.save_path}/metrics/{self.phase}.json"
+    
+        class_names = [f'class_{i}' for i in range(self.num_classes)]
+
+        # Function to convert confusion matrix to a dictionary with class names as keys
+        def convert_confusion_matrix_to_dict(confusion_matrix):
+            # Convert each confusion matrix row into a dictionary with class names as keys
+            return {class_names[i]: row.tolist() for i, row in enumerate(confusion_matrix)}
+
+        # Filter and process metrics history: 
+        # If the key is related to confusion matrix, apply the conversion function
+        metrics_history_filtered = {
+            key: [item.item() if isinstance(item, torch.Tensor) else item for item in value]
+            if "confusion_matrix" not in key else [convert_confusion_matrix_to_dict(cm) for cm in value]
+            for key, value in self.metrics_history.items()
+        }
+    
+        # Create a dictionary with the filtered metric history
+        metrics_dict = {
+            'metrics_history': metrics_history_filtered,
+            'loss_history': [loss.item() if isinstance(loss, torch.Tensor) else loss for loss in self.loss_history] if self.compute_loss else None
+        }
+
+        with open(path, 'w') as json_file:
+            json.dump(metrics_dict, json_file, indent=4)
