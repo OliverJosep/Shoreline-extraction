@@ -1,12 +1,11 @@
 import numpy as np
 import torch
-import torch.types as T
 from typing import List, Dict
 
 class PatchReconstructor():
 
     @staticmethod
-    def combine_patches(output: T.Tensor, n_classes: int, padding: List, patches: dict, patch_size: int = 256, stride: int = 128, method: str = 'avg') -> T.Tensor:
+    def combine_patches(output: torch.Tensor, n_classes: int, padding: List, patches: dict, patch_size: int = 256, stride: int = 128, method: str = 'avg') -> torch.Tensor:
 
         n_rows = max(patch["row"] for patch in patches) + 1
         n_cols = max(patch["col"] for patch in patches) + 1
@@ -26,7 +25,7 @@ class PatchReconstructor():
         return reconstruded
 
     @staticmethod
-    def combine_patches_avg(output: T.Tensor, n_classes: int, original_heigh: int, original_width: int, patch_size: int = 256, stride: int = 128) -> T.Tensor:
+    def combine_patches_avg(output: torch.Tensor, n_classes: int, original_heigh: int, original_width: int, patch_size: int = 256, stride: int = 128) -> torch.Tensor:
         reconstructed = np.zeros((n_classes, original_heigh, original_width), dtype=np.float32)
         count_map = np.zeros((original_heigh, original_width), dtype=np.float32)
 
@@ -39,10 +38,10 @@ class PatchReconstructor():
                 idx += 1
 
         reconstructed /= count_map
-        return T.Tensor(reconstructed)
+        return torch.Tensor(reconstructed)
     
     @staticmethod
-    def combine_patches_max(output: T.Tensor, n_classes: int, original_heigh: int, original_width: int, patch_size: int = 256, stride: int = 128) -> T.Tensor:
+    def combine_patches_max(output: torch.Tensor, n_classes: int, original_heigh: int, original_width: int, patch_size: int = 256, stride: int = 128) -> torch.Tensor:
         reconstructed = np.zeros((n_classes, original_heigh, original_width), dtype=np.float32)
 
         idx = 0
@@ -52,4 +51,4 @@ class PatchReconstructor():
                 reconstructed[:, y:y+patch_size, x:x+patch_size] = np.maximum(reconstructed[:, y:y+patch_size, x:x+patch_size], output_np)
                 idx += 1
 
-        return T.Tensor(reconstructed)
+        return torch.Tensor(reconstructed)

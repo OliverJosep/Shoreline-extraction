@@ -183,8 +183,8 @@ class BaseModel(ABC):
             early_stopping_counter = 0
             best_validation_loss = float('inf')
 
-            metrics_train = Metrics(phase='train', num_classes=self.classes, average='macro', compute_loss=True, save_path=self.artifact_path)
-            metrics_validation = Metrics(phase='validation', num_classes=self.classes, average='macro', compute_loss=True, save_path=self.artifact_path)
+            metrics_train = Metrics(phase='train', num_classes=self.classes, average='micro', compute_loss=True, save_path=self.artifact_path)
+            metrics_validation = Metrics(phase='validation', num_classes=self.classes, average='micro', compute_loss=True, save_path=self.artifact_path)
 
             for epoch in range(epochs):
                 print(f"Epoch {epoch + 1}/{epochs}")

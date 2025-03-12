@@ -36,7 +36,7 @@ class Metrics():
         for name, metric_class_pair in metrics_classes.items():
             metric_class = metric_class_pair[index_class]
 
-            posible_kwargs = {'num_classes': num_classes, 'average': average}
+            posible_kwargs = {'num_classes': num_classes, 'average': average, "normalize": "true"}
             kwargs = {key: value for key, value in posible_kwargs.items() if key in metric_class.__init__.__code__.co_varnames}
 
             self.metrics[name] = metric_class(**kwargs)
@@ -59,7 +59,7 @@ class Metrics():
 
     def update_metrics(self, prediction, target):
         if self.use_margin:
-            prediction, target = self.apply_roi(prediction, target)
+            prediction, target = self.apply_roi(prediction, target, shoreline_value=3)
 
         prediction = prediction.flatten().to(torch.int64)
         target = target.flatten().to(torch.int64)
@@ -97,8 +97,8 @@ class Metrics():
 
         return metrics_dict
     
-    def apply_roi(self, prediction, target):
-        coastline_indices = np.where(target == 3) # TODO: Change this to the correct value and pass it as an argument
+    def apply_roi(self, prediction, target, shoreline_value: int = 3):
+        coastline_indices = np.where(target == shoreline_value)
 
         roi_mask = np.zeros_like(target)
 
