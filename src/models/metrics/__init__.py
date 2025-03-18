@@ -81,8 +81,17 @@ class Metrics():
         text = f'{self.phase} metrics: \n'
         if self.compute_loss:
             text += f"\t{self.phase}_loss: {self.get_last_loss()}\n"
+            
         for key, _ in self.metrics.items():
-            text += f'\t{key}: {self.metrics_history[key][-1]}' + '\n'
+            value = self.metrics_history[key][-1]
+            
+            if "confusion_matrix" in key:
+                text += f'\t{key}: \n'
+                for row in value:
+                    text += "\t\t" + " ".join([f"{x:0.4f}" for x in row]) + '\n'
+            else:
+                text += f'\t{key}: {value}' + '\n'
+    
         return text
     
     def get_last_epoch_info_dict(self):

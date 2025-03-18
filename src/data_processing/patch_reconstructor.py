@@ -43,7 +43,7 @@ class PatchReconstructor():
     @staticmethod
     def combine_patches_max(output: torch.Tensor, n_classes: int, original_heigh: int, original_width: int, patch_size: int = 256, stride: int = 128) -> torch.Tensor:
         reconstructed = np.zeros((n_classes, original_heigh, original_width), dtype=np.float32)
-
+        
         idx = 0
         for y in range(0, original_heigh - patch_size + 1, stride):
             for x in range(0, original_width - patch_size + 1, stride):

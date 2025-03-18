@@ -336,6 +336,7 @@ class BaseModel(ABC):
             patches = result['patches'],
             padding = result['padding'],
             patch_size = result['options']['size'],
+            stride = result['options']['stride'],
             method = combination
         )
         
