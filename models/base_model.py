@@ -279,7 +279,7 @@ class BaseModel(ABC):
         pass
 
     @abstractmethod
-    def predict(self, input_image: Tensor, raw_output = False) -> Tensor:
+    def predict(self, input_image: Tensor, raw_output = False, binary_threshold = 0.5) -> Tensor:
         """Predicts the output for a single input image."""
         pass
 
@@ -295,7 +295,7 @@ class BaseModel(ABC):
         """
         return self.model(input_image)
 
-    def predict_patch(self, image_path: str, patch_size: int = 256, stride: int = 128, formes_class: Type[Dataset] = CNNFormes, combination: str = "avg") -> Tensor:
+    def predict_patch(self, image_path: str, patch_size: int = 256, stride: int = 128, formes_class: Type[Dataset] = CNNFormes, combination: str = "avg", binary_threshold = 0.5) -> Tensor:
         """
         Predicts the output for an image by extracting patches and reconstructing the image.
 
@@ -326,7 +326,7 @@ class BaseModel(ABC):
             # Predict the output for each patch
             output = torch.tensor([], device = self.device)
             for input_img in input_imgs:
-                raw_output = self.predict(input_img, formes_class, raw_output = True)
+                raw_output = self.predict(input_img, formes_class, raw_output = True, binary_threshold = binary_threshold)
                 output = torch.cat((output, raw_output), dim = 0)
 
         # Combine the patches
@@ -339,7 +339,10 @@ class BaseModel(ABC):
             stride = result['options']['stride'],
             method = combination
         )
+
+        if self.classes == 1:
+            pred = (reconstruded.squeeze() > binary_threshold).float()
+            return pred
         
         pred = torch.argmax(reconstruded, dim=0)
-
         return pred

@@ -60,7 +60,7 @@ class CNNModel(BaseModel):
 
         return loss.item(), preds
     
-    def predict(self, image_path, formes_class: Type[Dataset] = CNNFormes, raw_output = False): # TODO: Add types and descriptions
+    def predict(self, image_path, formes_class: Type[Dataset] = CNNFormes, raw_output = False, binary_threshold = 0.5): # TODO: Add types and descriptions
         self.model.to(self.device)
         self.model.eval()
         
@@ -76,6 +76,8 @@ class CNNModel(BaseModel):
             output = self.forward_pass(input_image)
 
         if raw_output:
+            if self.classes == 1:
+                return torch.sigmoid(output) 
             return output
         
         # Compute predictions
@@ -84,6 +86,6 @@ class CNNModel(BaseModel):
         else:
             # Apply sigmoid to output to get probabilities
             prob = torch.sigmoid(output)  
-            pred = (prob > 0.98).float()
+            pred = (prob > binary_threshold).float()
         
         return pred

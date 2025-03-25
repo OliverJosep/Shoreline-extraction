@@ -128,8 +128,9 @@ class Metrics():
             return # Do not save if no path is provided
         
         path = f"{self.save_path}/metrics/{self.phase}.json"
-    
-        class_names = [f'class_{i}' for i in range(self.num_classes)]
+
+        num_classes = self.num_classes if self.num_classes > 1 else 2
+        class_names = [f'class_{i}' for i in range(num_classes)]
 
         # Function to convert confusion matrix to a dictionary with class names as keys
         def convert_confusion_matrix_to_dict(confusion_matrix):
