@@ -114,7 +114,8 @@ class Patchify:
             for j in range(patches_img.shape[1]):
                 img_patch = patches_img[i, j, 0, :, :, :]
                 base_name, ext = os.path.splitext(image_path)
-                patch_info = {'row': i, 'col': j, 'image': img_patch, 'image_path': f"{base_name.split('/')[-1]}.patch.{i}_{j}{ext}"}
+                patch_info = {'row': i, 'col': j, 'image': img_patch, 'image_path': f"{os.path.basename(base_name)}.patch.{i}_{j}{ext}"}
+
 
                 if mask_path:
                     mask_patch = patches_mask[i, j, :, :]
@@ -127,7 +128,7 @@ class Patchify:
 
                     patch_info['mask'] = mask_patch
                     base_name, ext = os.path.splitext(mask_path)
-                    patch_info['mask_path'] = f"{base_name.split('/')[-1]}.patch.{i}_{j}{ext}"
+                    patch_info['mask_path'] = f"{os.path.basename(base_name)}.patch.{i}_{j}{ext}"
 
                 patches.append(patch_info)
 
@@ -167,7 +168,6 @@ class Patchify:
         for i, patch in enumerate(patches):
             patch_name = patch['image_path']
             patch_image = patch['image']
-
             self.save_patch(patch_image, output_image_dir, patch_name)
 
             if 'mask' in patch:
