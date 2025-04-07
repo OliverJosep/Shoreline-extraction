@@ -3,6 +3,8 @@ import cv2
 import numpy as np
 import shutil
 
+import matplotlib.pyplot as plt
+
 from typing import Tuple
 
 from src.data_processing.dataset_preprocessor import DatasetPreprocessor
@@ -12,22 +14,19 @@ class DatasetPreprocessorBiLSTM(DatasetPreprocessor):
         super().__init__()
 
     def remove_rows_with_only_one_class(self, img: np.array, mask: np.array) -> Tuple[np.array, np.array]:
-        for i in range(mask.shape[0]):
-            if i >= mask.shape[0]:
-                print(f"Índice {i} fuera de rango para la máscara con tamaño {mask.shape[0]}")
-                continue
-            class1 = np.where(mask[i, :] == 0)
-            class2 = np.where(mask[i, :] == 1)
+        valid_rows = np.any(mask == 0, axis=1) & np.any(mask == 1, axis=1)
+        return img[valid_rows], mask[valid_rows]
+    
+    def remove_cols_with_only_one_class(self, img: np.array, mask: np.array, background_class: int = 0, coastline_class: int = 2) -> Tuple[np.array, np.array]:
+        unique_per_column = [np.unique(mask[:, col]) for col in range(mask.shape[1])]
+    
+        keep_columns = [i for i, unique_vals in enumerate(unique_per_column) 
+                        if not set(unique_vals).issubset({background_class, coastline_class})]
 
-            if len(class1) > 0:
-                class1 = class1[0]
-            if len(class2) > 0:
-                class2 = class2[0]
-
-            if len(class1) == 0 or len(class2) == 0:
-                img = np.delete(img, i, axis=0)
-                mask = np.delete(mask, i, axis=0)
-        return img, mask
+        img_filtered = img[:, keep_columns, :] if img.ndim == 3 else img[:, keep_columns]
+        mask_filtered = mask[:, keep_columns]
+        
+        return img_filtered, mask_filtered
 
     def to_binary_mask(self, mask: np.array, type_class: int = 2) -> np.array:
         rows_shape = mask.shape[0]
@@ -64,6 +63,7 @@ class DatasetPreprocessorBiLSTM(DatasetPreprocessor):
         img, mask = self.remove_cols_with_background(img, mask, background_class)
         mask = self.mask_mappping(mask, mask_mapping) # 25 is the class for the not classified pixels
         img, mask = self.remove_rows_with_only_one_class(img, mask)
+        img, mask = self.remove_cols_with_only_one_class(img, mask)
         mask = self.to_binary_mask(mask, type_class = 2)
         # img, mask = self.add_padding(img, mask, max_width=801) # Not needed with batch size 1
 

@@ -6,7 +6,7 @@ from torch import Tensor
 
 from typing import Type
 from torch.utils.data import Dataset
-from src.models.data_management.cnn_formes import CNNFormes
+from src.models.data_management.bilstm_formes import BiLSTMFormesDataset
 
 class BiLSTM(BaseModel):
     def __init__(self, num_classes: int = 1, experiment_name: str = "default_experiment", use_mlflow: bool = False, pretrained: bool = False, hidden_units: int = 45):
@@ -27,7 +27,8 @@ class BiLSTM(BaseModel):
         target = target.float()
 
         # Compute loss
-        loss = loss_function(output, target)
+        sigmoid_output = torch.sigmoid(output)  # Apply sigmoid to output to get probabilities
+        loss = loss_function(sigmoid_output, target)
 
         # Compute predictions # TODO: This is for the metrics
         if self.classes > 1:
@@ -56,7 +57,8 @@ class BiLSTM(BaseModel):
         target = target.float()
 
         # Compute loss
-        loss = loss_function(output, target)
+        sigmoid_output = torch.sigmoid(output)  # Apply sigmoid to output to get probabilities
+        loss = loss_function(sigmoid_output, target)
 
         # Compute predictions
         if self.classes > 1:
@@ -68,7 +70,7 @@ class BiLSTM(BaseModel):
 
         return loss.item(), preds
     
-    def predict(self, image_path, formes_class: Type[Dataset] = CNNFormes, raw_output = False): # TODO: Add types and descriptions
+    def predict(self, image_path, formes_class: Type[Dataset] = BiLSTMFormesDataset, raw_output = False): # TODO: Add types and descriptions
         formes = formes_class(imgs_path=[image_path])
         input_image = formes[0] # Get the first element of the list, we only have one image
 
@@ -92,6 +94,6 @@ class BiLSTM(BaseModel):
         else:
             # Apply sigmoid to output to get probabilities
             prob = torch.sigmoid(output)  
-            pred = (prob > 0.98).float()
+            pred = (prob > 0.5).float()
         
         return pred
