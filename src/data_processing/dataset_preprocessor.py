@@ -137,6 +137,32 @@ class DatasetPreprocessor:
 
         return new_mask
     
+    def remove_rows_with_background_and_shoreline(self, img: np.array, mask: np.array, background_class: int = 0, shoreline_class: int = 255) -> Tuple[np.array, np.array]:
+        """
+        Removes the rows that contain only the background class or only the shoreline class.
+        Keeps rows where the shoreline class is present along with other classes.
+
+        Parameters:
+        img (np.array): The image.
+        mask (np.array): The mask image.
+        background_class (int): The background class. Default: 0
+        shoreline_class (int): The shoreline class. Default: 255
+
+        Returns:
+        Tuple[np.array, np.array]: The new image and mask with only the selected rows.
+        """
+        # Find rows where the shoreline class is present and other classes (not background) are also present
+        rows = np.where(
+            (np.any(mask == shoreline_class, axis=1)) &  # Rows with shoreline
+            (np.any((mask != background_class) & (mask != shoreline_class), axis=1))  # Rows with other classes
+        )[0]
+
+        # Filter the image and mask to keep only the selected rows
+        new_img = img[rows, :]
+        new_mask = mask[rows, :]
+
+        return new_img, new_mask
+    
     def process_image(self, img: np.array, mask: np.array, type_class: int = 255, background_class: int = 0, mask_mapping: dict = None) -> Tuple[np.array, np.array]:
         """
         Processes the image and mask.
@@ -155,6 +181,7 @@ class DatasetPreprocessor:
         img, mask = self.transform_class_to_background(img, mask, type_class = 25, background_class = background_class) # 25 is the class for the not classified pixels
         img, mask = self.remove_rows_with_background(img, mask, background_class)
         img, mask = self.remove_cols_with_background(img, mask, background_class)
+        img, mask = self.remove_rows_with_background_and_shoreline(img, mask, background_class, shoreline_class=type_class) # 255 is the class for the shoreline
         mask = self.mask_mappping(mask, mask_mapping) # 25 is the class for the not classified pixels
 
         return img, mask
