@@ -1,8 +1,9 @@
-from torcheval.metrics import (
+from torchmetrics.classification import (
     MulticlassAccuracy, MulticlassF1Score, MulticlassPrecision, 
     MulticlassRecall, MulticlassConfusionMatrix, BinaryAccuracy, 
     BinaryF1Score, BinaryPrecision, BinaryRecall, BinaryConfusionMatrix
 )
+
 import torch
 import numpy as np
 import csv
@@ -32,6 +33,8 @@ class Metrics():
         is_multiclass = num_classes > 1
         index_class = 0 if is_multiclass else 1
 
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Nou
+
         self.metrics = {}
         for name, metric_class_pair in metrics_classes.items():
             metric_class = metric_class_pair[index_class]
@@ -39,7 +42,7 @@ class Metrics():
             posible_kwargs = {'num_classes': num_classes, 'average': average, "normalize": "true"}
             kwargs = {key: value for key, value in posible_kwargs.items() if key in metric_class.__init__.__code__.co_varnames}
 
-            self.metrics[name] = metric_class(**kwargs)
+            self.metrics[name] = metric_class(**kwargs).to(self.device)  # Mou al mateix device
 
         self.metrics_history = {name: [] for name in metrics_classes.keys()}
 
@@ -61,11 +64,11 @@ class Metrics():
         if self.use_margin:
             prediction, target = self.apply_roi(prediction, target, shoreline_value=3)
 
-        prediction = prediction.flatten().to(torch.int64)
-        target = target.flatten().to(torch.int64)
+        prediction = prediction.flatten().to(torch.int64).to(self.device)
+        target = target.flatten().to(torch.int64).to(self.device)
 
         for key, metric in self.metrics.items():
-            metric.update(prediction.flatten(), target.flatten())
+            metric.update(prediction, target)
 
     def compute(self):
         for key, metric in self.metrics.items():
