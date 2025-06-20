@@ -158,7 +158,7 @@ class Patchify:
             }
         }
     
-    def extract_an_image_and_save_patches(self, image_path: str, mask_path: str = None, output_image_dir: str = 'data/patchify/train/images', output_mask_dir: str = 'data/patchify/train/masks', skip_no_shoreline: bool = False, padding_mode: str = "constant", binary_class: bool = False, p_keep_negative: int = 0) -> None:
+    def extract_an_image_and_save_patches(self, image_path: str, mask_path: str = None, output_image_dir: str = 'data/patchify/train/images', output_mask_dir: str = 'data/patchify/train/masks', skip_background:bool = False, skip_no_shoreline: bool = False, padding_mode: str = "constant", binary_class: bool = False, p_keep_negative: int = 0) -> None:
         """
         Extracts patches from the image and mask, and saves them to the specified directory.
 
@@ -173,7 +173,7 @@ class Patchify:
         Returns:
         dict: A dictionary containing the extracted patches and padding information.
         """
-        result = self.extract_patches(image_path, mask_path, padding_mode=padding_mode, skip_no_shoreline=skip_no_shoreline, binary_class=binary_class, p_keep_negative=p_keep_negative)
+        result = self.extract_patches(image_path, mask_path, padding_mode=padding_mode, skip_no_shoreline=skip_no_shoreline, binary_class=binary_class, skip_background=skip_background, p_keep_negative=p_keep_negative)
         patches = result["patches"]
         
         # Iterate over patches and save them
@@ -189,7 +189,7 @@ class Patchify:
         
         return result
 
-    def extract_patches_and_save(self, data: Dict[str, Dict[str, List]], output_dir: str = 'data/patchify/', skip_no_shoreline: int = None, padding_mode: str = "constant", binary_class: bool = False, p_keep_negative: int = 0) -> None:
+    def extract_patches_and_save(self, data: Dict[str, Dict[str, List]], output_dir: str = 'data/patchify/', skip_no_shoreline: int = None, padding_mode: str = "constant", skip_background:bool = False, binary_class: bool = False, p_keep_negative: int = 0) -> None:
         """
         Extract patches from images and masks, and save them into the specified directory
         for training, validation, and testing datasets.
@@ -220,7 +220,7 @@ class Patchify:
             os.makedirs(y_dir, exist_ok=True)
 
             for i, (image_path, mask_path) in enumerate(zip(dataset_data['images'], dataset_data['masks'])):
-                self.extract_an_image_and_save_patches(image_path, mask_path, x_dir, y_dir, padding_mode=padding_mode, skip_no_shoreline=skip_no_shoreline, binary_class=binary_class, p_keep_negative=p_keep_negative)
+                self.extract_an_image_and_save_patches(image_path, mask_path, x_dir, y_dir, padding_mode=padding_mode, skip_no_shoreline=skip_no_shoreline, skip_background = skip_background, binary_class=binary_class, p_keep_negative=p_keep_negative)
             
             print(f"Finished extracting patches for {dataset} dataset.\n")
 
