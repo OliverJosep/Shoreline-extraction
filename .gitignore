@@ -6,9 +6,6 @@
 /artifacts/*
 !/artifacts/README.md
 
-# Ignore figures
-/notebooks/figures/img/*
-
 # Mac OS
 
 .DS_Store
