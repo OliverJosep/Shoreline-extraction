@@ -48,7 +48,7 @@ All predictions and dataset splits used for evaluation are stored in [`/predicti
 │   ├── /model-training/       # Model training notebooks
 │   └── /evaluation/           # Model evaluation notebooks
 │
-├── .env.example             # Example environment variables file
+├── .env.example               # Example environment variables file
 ├── README.md                  # Project overview and documentation
 └── requirements.txt           # Project dependencies
 ```
