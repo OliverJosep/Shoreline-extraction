@@ -248,7 +248,17 @@ class DatasetPreprocessor:
 
     def preprocess_from_metadata(self, metadata: list, dataset_path: str, dataset_output_path: str, mask_mapping: dict = None) -> None:
         """
-        TODO: Add description
+        Preprocesses the dataset using the metadata provided.
+
+        Parameters:
+        metadata (list): A list of dictionaries containing the metadata for each image and mask.
+                        Each dictionary should contain the keys 'image_path' and 'mask_path'.
+        dataset_path (str): The path to the dataset.
+        dataset_output_path (str): The path to save the preprocessed dataset.
+        mask_mapping (dict): The mapping of the classes. The key is the old class and the value is the new class. Default: None
+
+        Returns:
+        None
         """
 
         # Remove the output directory if it already exists

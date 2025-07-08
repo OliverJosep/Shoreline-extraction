@@ -27,7 +27,7 @@ class LossManager:
             "BCELoss": nn.BCELoss(),
             "BCEWithLogitsLoss": nn.BCEWithLogitsLoss(pos_weight=weight),
             "DiceLoss": DiceLoss(weight=weight), # Binary Dice Loss with optional class weighting
-            # TODO: Add more loss functions here
+            # Add more loss functions here as needed
         }
         
         if loss_function_name not in loss_functions or loss_functions[loss_function_name] is None:

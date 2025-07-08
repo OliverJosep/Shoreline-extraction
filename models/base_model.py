@@ -151,13 +151,13 @@ class BaseModel(ABC):
         ValueError: If the data loaders have not been initialized.
 
         Returns:
-        TODO: Metrics
+        None
         """
 
         if (self.train_loader is None) or (self.validation_loader is None):
             raise ValueError("Error: The data loaders have not been initialized. Please load the data before training the model.")
         
-        # TODO: Generate a new folder for each run, with the timestamp as the name, and save the model, name of the model (like UNet), logs, and metrics there. For the logs, use the logging module.
+        # Generate folders for saving the artifacts
         self.generate_folders_for_training(artifact_path=artifact_path, artifact_name=run_name)
         
         # Start the MLflow run
@@ -179,7 +179,7 @@ class BaseModel(ABC):
             loss_function = LossManager.get_loss_function(loss_function_name, weight=weight)
             optimizer = OptimizerManager.get_optimizer(optimizer_name, self.model.parameters(), learning_rate)
 
-            # Initialize the early stopping counter. TODO: Move this to a external function or class
+            # Initialize the early stopping counter.
             early_stopping_counter = 0
             best_validation_loss = float('inf')
 
@@ -229,7 +229,7 @@ class BaseModel(ABC):
                 if self.artifact_path:
                     self.save_model(os.path.join(self.artifact_path, "models", "last_epoch.pth"))
 
-                # Early stopping check. TODO: Implement this in a class.
+                # Early stopping check
                 val_loss = metrics_validation.get_last_loss()
                 if val_loss < best_validation_loss:
                     early_stopping_counter = 0

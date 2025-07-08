@@ -4,9 +4,11 @@ from models.cnn_model import CNNModel
 
 class DuckNet(CNNModel):
     """
-    TODO: Add description
+    DuckNet model for image segmentation tasks.
 
-    id we want to modify the prediction method or the train step, we can do it here.
+    This class extends the CNNModel class and provides a specific implementation
+    for the DuckNet architecture. It initializes the model with the
+    DuckNet architecture and sets the number of output classes.
     """
     def __init__(self, num_classes: int = 2, experiment_name:str = "default_experiment", use_mlflow: bool = False):
         model: torch.nn.Module = DuckNetArchitecture(in_channels=3, out_channels=num_classes)

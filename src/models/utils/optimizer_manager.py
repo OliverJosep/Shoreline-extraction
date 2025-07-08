@@ -22,11 +22,9 @@ class OptimizerManager:
         optim.Optimizer: The optimizer instance.
         """
 
-        # TODO: Fix the type of model_params
         optimizers = {
             "adam": optim.Adam(params=model_params, lr=learning_rate),
-            # "sgd": optim.SGD(params=list(model_params), lr=learning_rate, momentum=0.9)
-            # TODO: Add more optimizers if needed
+            # Add more optimizers here if needed
         }
 
         # Transform the optimizer name to lowercase

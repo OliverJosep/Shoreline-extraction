@@ -9,7 +9,7 @@ class CNNModel(BaseModel):
     def __init__(self, model: torch.nn.Module, num_classes: int = 2, experiment_name:str = "default_experiment", use_mlflow: bool = False):
         super().__init__(model, classes=num_classes, experiment_name=experiment_name, use_mlflow=use_mlflow)
 
-    def train_step(self, input_image, target, loss_function, optimizer): # TODO: Add types and descriptions
+    def train_step(self, input_image, target, loss_function, optimizer):
         # Forward pass
         output = self.forward_pass(input_image)
 
@@ -22,7 +22,7 @@ class CNNModel(BaseModel):
         # Compute loss
         loss = loss_function(output, target)
 
-        # Compute predictions # TODO: This is for the metrics
+        # Compute predictions
         if self.classes > 1:
             preds = torch.argmax(output, dim=1)  # [batch_size, height, width]
         else:
@@ -37,7 +37,7 @@ class CNNModel(BaseModel):
 
         return loss.item(), preds
 
-    def validate_step(self, input_image, target, loss_function): # TODO: Add types and descriptions
+    def validate_step(self, input_image, target, loss_function):
         # Forward pass
         output = self.forward_pass(input_image)
 
@@ -60,7 +60,7 @@ class CNNModel(BaseModel):
 
         return loss.item(), preds
     
-    def predict(self, image_path, formes_class: Type[Dataset] = CNNFormes, raw_output = False, binary_threshold = 0.5): # TODO: Add types and descriptions
+    def predict(self, image_path, formes_class: Type[Dataset] = CNNFormes, raw_output = False, binary_threshold = 0.5):
         self.model.to(self.device)
         self.model.eval()
         

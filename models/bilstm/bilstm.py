@@ -14,7 +14,7 @@ class BiLSTM(BaseModel):
         super().__init__(model=model, classes=num_classes, experiment_name=experiment_name, use_mlflow=use_mlflow)
         self.in_channels = 3
 
-    def train_step(self, input_image, target, loss_function, optimizer): # TODO: Add types and descriptions
+    def train_step(self, input_image, target, loss_function, optimizer):
         
         # print(f"input_image shape: {input_image.shape}")
         input_image = input_image.reshape(-1, input_image.shape[2], self.in_channels)
@@ -30,7 +30,7 @@ class BiLSTM(BaseModel):
         sigmoid_output = torch.sigmoid(output)  # Apply sigmoid to output to get probabilities
         loss = loss_function(sigmoid_output, target)
 
-        # Compute predictions # TODO: This is for the metrics
+        # Compute prediction
         if self.classes > 1:
             preds = torch.argmax(output, dim=1)  # [batch_size, height, width]
         else:
@@ -45,7 +45,7 @@ class BiLSTM(BaseModel):
 
         return loss.item(), preds
 
-    def validate_step(self, input_image, target, loss_function): # TODO: Add types and descriptions
+    def validate_step(self, input_image, target, loss_function):
 
         input_image = input_image.reshape(-1, input_image.shape[2], self.in_channels)
 
@@ -69,8 +69,8 @@ class BiLSTM(BaseModel):
             preds = (probs > 0.5).float()  
 
         return loss.item(), preds
-    
-    def predict(self, image_path, formes_class: Type[Dataset] = BiLSTMFormesDataset, raw_output = False): # TODO: Add types and descriptions
+
+    def predict(self, image_path, formes_class: Type[Dataset] = BiLSTMFormesDataset, raw_output = False):
         formes = formes_class(imgs_path=[image_path])
         input_image = formes[0] # Get the first element of the list, we only have one image
 

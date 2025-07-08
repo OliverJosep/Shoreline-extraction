@@ -94,12 +94,10 @@ class DuckNetArchitecture(nn.Module):
 
         x = self.last_conv(duck_up1)
 
-        # TODO: Research if this is the correct way to handle the output activation
         if self.last_conv.out_channels > 1:
             return torch.softmax(x, dim=1) # multi-class segmentation
         else:
             return x
-            return torch.sigmoid(x) # binary segmentation
 
 class conv_block(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1, dilation=1, is_relu=True, is_norm=True):

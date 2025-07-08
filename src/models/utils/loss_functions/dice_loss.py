@@ -25,7 +25,6 @@ class DiceLoss(nn.Module):
         dice = (2. * intersection + self.smooth) / (preds.sum() + targets.sum() + self.smooth)
         dice_loss = 1 - dice  # Transform it to loss
 
-        # TODO: Check if this is correct
         if self.weight is not None:
             # Weight factor to balance positive negative classes
             weight_factor = self.weight * targets + (1 - self.weight) * (1 - targets)
