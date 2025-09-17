@@ -116,6 +116,62 @@ class DatasetPreprocessor:
 
         return new_img, new_mask
     
+    def remove_rows_with_some_background(self, img: np.array, mask: np.array, background_class: int = 0) -> Tuple[np.array, np.array]:
+        """
+        Removes the rows that contain only the background class.
+
+        Parameters:
+        img (np.array): The image.
+        mask (np.array): The mask image.
+        background_class (int): The background class. Default: 0
+
+        Returns:
+        Tuple[np.array, np.array]: The new image and mask with only the selected rows.
+        """
+        n_rows = mask.shape[0]
+        rows = []
+
+        total_pixels = mask.shape[1]
+
+        for row in range(n_rows):
+            background_pixels = np.sum(mask[row, :] == background_class)
+            if background_pixels > total_pixels*0.50:  # If more than 50% of the pixels are background, skip this row
+                continue
+
+            rows.append(row)
+
+        new_img = img[rows, :]
+        new_mask = mask[rows, :]
+
+        return new_img, new_mask
+    
+    def remove_cols_with_some_background(self, img: np.array, mask: np.array, background_class: int = 0) -> Tuple[np.array, np.array]:
+        """
+        Removes the columns that contain only the background class.
+
+        Parameters:
+        img (np.array): The image.
+        mask (np.array): The mask image.
+        background_class (int): The background class. Default: 0
+
+        Returns:
+        Tuple[np.array, np.array]: The new image and mask with only the selected columns.
+        """
+        n_cols = mask.shape[1]
+        cols = []
+
+        total_pixels = mask.shape[0]
+        for col in range(n_cols):
+            background_pixels = np.sum(mask[:, col] == background_class)
+            if background_pixels > total_pixels*0.01:  # If more than 1% of the pixels are background, skip this column
+                continue
+            cols.append(col)
+
+        new_img = img[:, cols]
+        new_mask = mask[:, cols]
+
+        return new_img, new_mask
+
     def mask_mappping(self, mask: np.array, mapping: dict) -> np.array:
         """
         Maps the mask classes to the new classes.
@@ -182,6 +238,29 @@ class DatasetPreprocessor:
         img, mask = self.remove_rows_with_background(img, mask, background_class)
         img, mask = self.remove_cols_with_background(img, mask, background_class)
         img, mask = self.remove_rows_with_background_and_shoreline(img, mask, background_class, shoreline_class=type_class) # 255 is the class for the shoreline
+        mask = self.mask_mappping(mask, mask_mapping) # 25 is the class for the not classified pixels
+
+        return img, mask
+
+    def process_image_oblique(self, img: np.array, mask: np.array, shoreline_class_pixel: int = 255, background_class: int = 0, mask_mapping: dict = None) -> Tuple[np.array, np.array]:
+        """
+        Processes the image and mask for oblique images.
+
+        Parameters:
+        img (np.array): The image.
+        mask (np.array): The mask image.
+        shoreline_class_pixel (int): The color class for the shoreline pixels. Default: 255
+        background_class (int): The background class. Default: 0
+        mask_mapping (dict): The mapping of the classes. The key is the old class and the value is the new class. Default: None
+
+        Returns:
+        Tuple[np.array, np.array]: The new image and mask.
+        """
+        img, mask = self.transform_class_to_background(img, mask, type_class = 25, background_class = background_class) # 25 is the class for the not classified pixels
+        img, mask = self.remove_rows_with_background(img, mask, background_class)
+        img, mask = self.remove_cols_with_some_background(img, mask, background_class)
+        img, mask = self.remove_rows_with_some_background(img, mask, background_class)
+        # img, mask = self.remove_rows_with_background_and_shoreline(img, mask, background_class, shoreline_class=shoreline_class_pixel) # 255 is the class for the shoreline
         mask = self.mask_mappping(mask, mask_mapping) # 25 is the class for the not classified pixels
 
         return img, mask
