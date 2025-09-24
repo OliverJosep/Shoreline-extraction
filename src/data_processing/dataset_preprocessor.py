@@ -256,16 +256,13 @@ class DatasetPreprocessor:
         Returns:
         Tuple[np.array, np.array]: The new image and mask.
         """
-        img, mask = self.transform_class_to_background(img, mask, type_class = 25, background_class = background_class) # 25 is the class for the not classified pixels
-        img, mask = self.remove_rows_with_background(img, mask, background_class)
+        img, mask = self.remove_rows_with_some_background(img, mask, background_class = 25)
+        img, mask = self.remove_rows_with_some_background(img, mask, background_class = 0)
         img, mask = self.remove_cols_with_some_background(img, mask, background_class)
-        img, mask = self.remove_rows_with_some_background(img, mask, background_class)
-        # img, mask = self.remove_rows_with_background_and_shoreline(img, mask, background_class, shoreline_class=shoreline_class_pixel) # 255 is the class for the shoreline
         mask = self.mask_mappping(mask, mask_mapping) # 25 is the class for the not classified pixels
-
         return img, mask
 
-    def preprocess(self, dataset_path: str, dataset_output_path: str, mask_mapping: dict = None) -> None:
+    def preprocess(self, dataset_path: str, dataset_output_path: str, mask_mapping: dict = None, oblique: bool = False) -> None:
         """
         Preprocesses the dataset located at the given path.
         The dataset should be organized in the following way:
@@ -285,6 +282,7 @@ class DatasetPreprocessor:
         dataset_path (str): The path to the dataset.
         dataset_output_path (str): The path to save the preprocessed dataset.
         mask_mapping (dict): The mapping of the classes. The key is the old class and the value is the new class. Default: None
+        oblique (bool): Whether the images are oblique or not. Default: False
 
         Returns:
         None
@@ -317,7 +315,10 @@ class DatasetPreprocessor:
             image = self.load_image(image_folder_path)
             mask = self.load_mask(mask_folder_path)
 
-            image, mask = self.process_image(image, mask, mask_mapping=mask_mapping)
+            if oblique:
+                image, mask = self.process_image_oblique(image, mask, mask_mapping=mask_mapping)
+            else:
+                image, mask = self.process_image(image, mask, mask_mapping=mask_mapping)
 
             output_image_path = os.path.join(output_images_path, image_folder)
             output_mask_path = os.path.join(output_masks_path, mask_folder)
