@@ -129,14 +129,16 @@ class Patchify:
                     # Skip patch if mask has no skip_no_shoreline 
                     if skip_no_shoreline:
                         if binary_class:
+                            has_class_1 = np.any(mask_patch == 0)
+                            has_class_2 = np.any(mask_patch == 1)
+                        else:
                             has_class_1 = np.any(mask_patch == 1)
                             has_class_2 = np.any(mask_patch == 2)
-                            if has_class_1 and has_class_2:
-                                pass
-                            elif random.random() > p_keep_negative:
-                                continue
-                        # if np.sum(mask_patch == skip_no_shoreline) == 0 and random.random() > p_keep_negative:  # Check for shoreline pixels
-                        #     continue
+
+                        if has_class_1 and has_class_2:
+                            pass
+                        elif random.random() > p_keep_negative:
+                            continue
 
                     patch_info['mask'] = mask_patch
                     base_name, ext = os.path.splitext(mask_path)
