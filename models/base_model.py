@@ -17,6 +17,7 @@ from src.data_processing.patchify import Patchify
 from src.data_processing.patch_reconstructor import PatchReconstructor
 from datetime import datetime
 from src.models.data_management.cnn_formes import CNNFormes
+from typing import Tuple
 
 class BaseModel(ABC):
     def __init__(self, model: nn.Module, classes: int = 0, experiment_name:str = "default_experiment", use_mlflow: bool = False) -> None:
@@ -66,7 +67,7 @@ class BaseModel(ABC):
         """
         self.model.load_state_dict(torch.load(path, map_location=self.device, weights_only=True))
 
-    def load_data(self, data_source: Union[str, dict], formes_class: Type[Dataset], batch_size: int = 16) -> None:
+    def load_data(self, data_source: Union[str, dict], formes_class: Type[Dataset], batch_size: int = 16, resize_shape: Tuple[int, int] = (256, 256)) -> None:
         """
         The method to load the data from the given path.
 
@@ -84,14 +85,14 @@ class BaseModel(ABC):
 
         self.data = DataLoaderManager.load_data(data_source)
 
-        self.train_formes = DataLoaderManager.generate_formes(self.data["train"]["images"], self.data["train"]["masks"], formes_class)
+        self.train_formes = DataLoaderManager.generate_formes(self.data["train"]["images"], self.data["train"]["masks"], formes_class, resize_shape=resize_shape)
         self.train_loader = DataLoaderManager.generate_data_loaders(self.train_formes, batch_size, shuffle=True)
 
-        self.validation_formes = DataLoaderManager.generate_formes(self.data["validation"]["images"], self.data["validation"]["masks"], formes_class)
+        self.validation_formes = DataLoaderManager.generate_formes(self.data["validation"]["images"], self.data["validation"]["masks"], formes_class, resize_shape=resize_shape)
         self.validation_loader = DataLoaderManager.generate_data_loaders(self.validation_formes, batch_size, shuffle=False)
 
         if "test" in self.data:
-            self.test_formes = DataLoaderManager.generate_formes(self.data["test"]["images"], self.data["test"]["masks"], formes_class)
+            self.test_formes = DataLoaderManager.generate_formes(self.data["test"]["images"], self.data["test"]["masks"], formes_class, resize_shape=resize_shape)
             self.test_loader = DataLoaderManager.generate_data_loaders(self.test_formes, batch_size, shuffle=False)
     
     def generate_folders_for_training(self, artifact_path: str, artifact_name: str = None) -> None:

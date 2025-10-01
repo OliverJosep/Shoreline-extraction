@@ -1,5 +1,5 @@
 import os
-from typing import Dict, List, Union, Type
+from typing import Dict, List, Union, Type, Tuple
 from torch.utils.data import Dataset, DataLoader
 
 class DataLoaderManager:
@@ -127,7 +127,7 @@ class DataLoaderManager:
         return data_dict
     
     @staticmethod
-    def generate_formes(X: list[str], y: list[str], formes_class: Type[Dataset]) -> Dataset:
+    def generate_formes(X: list[str], y: list[str], formes_class: Type[Dataset], resize_shape: Tuple[int, int] = (256, 256)) -> Dataset:
         """
         Generate Formes dataset.
 
@@ -139,7 +139,7 @@ class DataLoaderManager:
         Returns:
         Formes: The training dataset.
         """
-        return formes_class(X, y)
+        return formes_class(X, y, resize_shape=resize_shape)
     
     @staticmethod
     def generate_data_loaders(dataset: Dataset, batch_size: int = 16, shuffle: bool = False) -> DataLoader:

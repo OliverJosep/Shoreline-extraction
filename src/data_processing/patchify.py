@@ -7,13 +7,13 @@ from patchify import patchify
 from typing import List, Dict
 
 class Patchify:
-    def __init__(self, patch_size: int = 256, stride: int = 128):
+    def __init__(self, patch_size: tuple = (256, 256), stride: tuple = (128, 128)):
         """
         Initializes the Patchify object.
 
         Parameters:
-        patch_size (int): The size of each patch (default: 256).
-        stride (int): The stride (step size) for moving the window (default: 128).
+        patch_size (tuple): The size of each patch with (height, width). Default: (256, 256).
+        stride (tuple): The stride (step size) for moving the window with (vertical, horizontal). Default: (128, 128).
         """
         self.patch_size = patch_size
         self.stride = stride
@@ -74,11 +74,11 @@ class Patchify:
         height, width, _ = image.shape # height, width, channels
 
         # Calculate the padding needed to make the image divisible by patch_size
-        aux_height = height % self.patch_size
-        aux_width = width % self.patch_size
+        aux_height = height % self.patch_size[0]
+        aux_width = width % self.patch_size[1]
 
-        aux_height = self.patch_size - aux_height
-        aux_width = self.patch_size - aux_width
+        aux_height = self.patch_size[0] - aux_height
+        aux_width = self.patch_size[1] - aux_width
 
 
         # Padding for the image to be divisible by patch_size
@@ -101,7 +101,7 @@ class Patchify:
         else:
             padded_image = np.pad(image, ((padding_top, padding_bottom), (padding_left, padding_right), (0, 0)), mode='constant', constant_values=0)
 
-        patches_img = patchify(padded_image, (self.patch_size, self.patch_size, 3), step=self.stride)
+        patches_img = patchify(padded_image, (self.patch_size[0], self.patch_size[1], 3), step=(self.stride[0], self.stride[1], 3))
 
         patches = []
 
@@ -112,7 +112,7 @@ class Patchify:
             else:
                 padded_mask = np.pad(mask, ((padding_top, padding_bottom), (padding_left, padding_right)), mode='constant', constant_values=0)
 
-            patches_mask = patchify(padded_mask, (self.patch_size, self.patch_size), step=self.stride)
+            patches_mask = patchify(padded_mask, (self.patch_size[0], self.patch_size[1]), step=(self.stride[0], self.stride[1]))
 
         for i in range(patches_img.shape[0]):
             for j in range(patches_img.shape[1]):
