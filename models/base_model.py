@@ -280,7 +280,7 @@ class BaseModel(ABC):
         pass
 
     @abstractmethod
-    def predict(self, input_image: Tensor, raw_output = False, binary_threshold = 0.5) -> Tensor:
+    def predict(self, input_image: Tensor, raw_output = False, binary_threshold = 0.5, resize_shape = (256, 256)) -> Tensor:
         """Predicts the output for a single input image."""
         pass
 
@@ -296,7 +296,7 @@ class BaseModel(ABC):
         """
         return self.model(input_image)
 
-    def predict_patch(self, image_path: str, patch_size: int = 256, stride: int = 128, formes_class: Type[Dataset] = CNNFormes, combination: str = "avg", binary_threshold = 0.5, raw_output=False) -> Tensor:
+    def predict_patch(self, image_path: str, patch_size: tuple = (256, 256), stride: tuple = (128, 128), formes_class: Type[Dataset] = CNNFormes, combination: str = "avg", binary_threshold = 0.5, raw_output=False) -> Tensor:
         """
         Predicts the output for an image by extracting patches and reconstructing the image.
 
@@ -327,7 +327,7 @@ class BaseModel(ABC):
             # Predict the output for each patch
             output = torch.tensor([], device = self.device)
             for input_img in input_imgs:
-                raw_output_predict = self.predict(input_img, formes_class, raw_output = True, binary_threshold = binary_threshold)
+                raw_output_predict = self.predict(input_img, formes_class, raw_output = True, binary_threshold = binary_threshold, resize_shape = patch_size)
                 output = torch.cat((output, raw_output_predict), dim = 0)
 
         # Combine the patches

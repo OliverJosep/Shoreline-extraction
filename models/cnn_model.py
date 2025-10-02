@@ -60,11 +60,11 @@ class CNNModel(BaseModel):
 
         return loss.item(), preds
     
-    def predict(self, image_path, formes_class: Type[Dataset] = CNNFormes, raw_output = False, binary_threshold = 0.5):
+    def predict(self, image_path, formes_class: Type[Dataset] = CNNFormes, raw_output = False, binary_threshold = 0.5, resize_shape = (256, 256)):
         self.model.to(self.device)
         self.model.eval()
         
-        formes = formes_class(imgs_path=[image_path])
+        formes = formes_class(imgs_path=[image_path], resize_shape=resize_shape)
         input_image = formes[0] # Get the first element of the list, we only have one image
 
         # Add the dimension of the batch
