@@ -296,7 +296,7 @@ class BaseModel(ABC):
         """
         return self.model(input_image)
 
-    def predict_patch(self, image_path: str, patch_size: tuple = (256, 256), stride: tuple = (128, 128), formes_class: Type[Dataset] = CNNFormes, combination: str = "avg", binary_threshold = 0.5, raw_output=False) -> Tensor:
+    def predict_patch(self, image_path: str, patch_size: tuple = (256, 256), stride: tuple = (128, 128), formes_class: Type[Dataset] = CNNFormes, combination: str = "avg", binary_threshold = 0.5, raw_output=False, padding_mode="constant") -> Tensor:
         """
         Predicts the output for an image by extracting patches and reconstructing the image.
 
@@ -306,6 +306,9 @@ class BaseModel(ABC):
         stride (int): The stride for the patches. Default: 128
         formes_class (Type[Dataset]): The class of the Form. Default: CNNFormes
         combination (str): The method to combine the patches. Options: 'avg' or 'max'. Default: 'avg'
+        binary_threshold (float): The threshold to use for binary classification. Default: 0.5
+        raw_output (bool): If True, return the raw output of the model. Default: False
+        padding_mode (str): The padding mode to use. Default: "constant"
 
         Raises:
         ValueError: If the combination method is not 'avg' or 'max'.
@@ -319,7 +322,7 @@ class BaseModel(ABC):
 
         # Create a temporary directory to store the patches
         with tempfile.TemporaryDirectory() as temp_dir:
-            result = patchify.extract_an_image_and_save_patches(image_path=image_path, output_image_dir=temp_dir)
+            result = patchify.extract_an_image_and_save_patches(image_path=image_path, output_image_dir=temp_dir, padding_mode=padding_mode)
 
             # list of patches of the tmp directory
             input_imgs = [f"{temp_dir}/{patch['image_path']}" for patch in result['patches']]
@@ -327,7 +330,7 @@ class BaseModel(ABC):
             # Predict the output for each patch
             output = torch.tensor([], device = self.device)
             for input_img in input_imgs:
-                raw_output_predict = self.predict(input_img, formes_class, raw_output = True, binary_threshold = binary_threshold, resize_shape = patch_size)
+                raw_output_predict = self.predict(input_img, formes_class = formes_class, raw_output = True, binary_threshold = binary_threshold, resize_shape = patch_size)
                 output = torch.cat((output, raw_output_predict), dim = 0)
 
         # Combine the patches

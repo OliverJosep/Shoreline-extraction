@@ -10,8 +10,15 @@ class PatchReconstructor():
         n_rows = max(patch["row"] for patch in patches) + 1
         n_cols = max(patch["col"] for patch in patches) + 1
 
-        orig_h = n_rows * (patch_size[0] - stride[0]) + stride[0]
-        orig_w = n_cols * (patch_size[1] - stride[1]) + stride[1]
+        if patch_size[0] == stride[0]:
+            orig_h = n_rows * patch_size[0]
+        else:
+            orig_h = n_rows * (patch_size[0] - stride[0]) + stride[0]
+
+        if patch_size[1] == stride[1]:
+            orig_w = n_cols * patch_size[1]
+        else:
+            orig_w = n_cols * (patch_size[1] - stride[1]) + stride[1]
 
         if method == "avg":
             reconstruded = PatchReconstructor.combine_patches_avg(output, n_classes, orig_h, orig_w, patch_size, stride)
