@@ -106,6 +106,41 @@ class CoastData:
         
         return [{'image': os.path.join(self.data_path, "images", entry['image']['filename']), 'mask': os.path.join(self.data_path, "masks", entry['image']['mask']['filename'])} 
                 for entry in self.metadata if entry['image']['site']['CSname'] == station_name]
+    
+    def get_images_and_shooreline_coords(self, station_name: str = None):
+        """
+        Returns a list of dictionaries containing the image filenames and shoreline coordinates
+        for the specified coastal station or the entire dataset.
+
+        Parameters:
+        station_name (str): The name of the coastal station. If None, returns all images and shoreline coordinates. Default: None
+
+        Returns:
+        list: A list of dictionaries with 'image' full paths and 'shoreline_coords' for each entry.
+        """
+
+        if station_name is None or station_name == 'global':
+            return [{'image': os.path.join(self.data_path, "images", entry['image']['filename']), 'shoreline_coords': entry['image']['shoreline']['coordinates']} 
+                for entry in self.metadata]
+        
+        return [{'image': os.path.join(self.data_path, "images", entry['image']['filename']), 'shoreline_coords': entry['image']['shoreline']['coordinates']} 
+                for entry in self.metadata if entry['image']['site']['CSname'] == station_name]
+
+    def get_images(self, station_name: str = None):
+        """
+        Returns a list of image filenames for the specified coastal station or the entire dataset.
+
+        Parameters:
+        station_name (str): The name of the coastal station. If None, returns all images. Default: None
+
+        Returns:
+        list: A list of image full paths.
+        """
+
+        if station_name is None or station_name == 'global':
+            return [entry['image']['filename'] for entry in self.metadata], [entry['image']['oblique_path'].split('/')[-1] for entry in self.metadata]
+
+        return [entry['image']['filename'] for entry in self.metadata if entry['image']['site']['CSname'] == station_name], [entry['image']['oblique_path'].split('/')[-1] for entry in self.metadata if entry['image']['site']['CSname'] == station_name]
 
     def split_data(self, val_size: float = 0.2, test_size: float = 0.1, random_state: int = 42):
         """
