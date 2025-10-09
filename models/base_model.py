@@ -296,7 +296,7 @@ class BaseModel(ABC):
         """
         return self.model(input_image)
 
-    def predict_patch(self, image_path: str, patch_size: tuple = (256, 256), stride: tuple = (128, 128), formes_class: Type[Dataset] = CNNFormes, combination: str = "avg", binary_threshold = 0.5, raw_output=False, padding_mode="constant") -> Tensor:
+    def predict_patch(self, image_path: str, patch_size: tuple = (256, 256), stride: tuple = (128, 128), formes_class: Type[Dataset] = CNNFormes, combination: str = "avg", binary_threshold = 0.5, raw_output=False, padding_mode="constant", return_probabilities=False) -> Tensor:
         """
         Predicts the output for an image by extracting patches and reconstructing the image.
 
@@ -309,6 +309,7 @@ class BaseModel(ABC):
         binary_threshold (float): The threshold to use for binary classification. Default: 0.5
         raw_output (bool): If True, return the raw output of the model. Default: False
         padding_mode (str): The padding mode to use. Default: "constant"
+        return_probabilities (bool): If True, return the probabilities instead of class labels. Default: False
 
         Raises:
         ValueError: If the combination method is not 'avg' or 'max'.
@@ -343,6 +344,11 @@ class BaseModel(ABC):
             stride = result['options']['stride'],
             method = combination
         )
+
+        if return_probabilities:
+            if self.classes == 1:
+                return torch.sigmoid(reconstruded)
+            return torch.softmax(reconstruded, dim=0)
 
         if self.classes == 1:
             if raw_output == True:
