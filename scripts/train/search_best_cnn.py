@@ -99,7 +99,7 @@ def main():
                 run_name = f"{data_type}_{network}_{key}"
                 description = f"Dataset type: {data_type}, Training {network} with patch size {key}, patch_size={patches[key]['patch_size']}, stride={patches[key]['stride']}"
                 early_stopping = 10
-                model.train(epochs=1, artifact_path=artifact_path, run_name=run_name, run_description=description, early_stopping=early_stopping)
+                model.train(epochs=100, artifact_path=artifact_path, run_name=run_name, run_description=description, early_stopping=early_stopping)
                 print(f"\tModel trained for {key}")
 
                 # Clear memory

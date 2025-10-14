@@ -244,8 +244,8 @@ class BaseModel(ABC):
                         if self.use_mlflow:
                             self.mlflow_manager.log_artifacts(self.artifact_path)
                 else:
-                    print(f"Validation loss did not improve from {best_validation_loss:.46}, actual loss {val_loss:.6f}. Early stopping counter: {early_stopping_counter}/{early_stopping}")
                     early_stopping_counter += 1
+                    print(f"Validation loss did not improve from {best_validation_loss:.46}, actual loss {val_loss:.6f}. Early stopping counter: {early_stopping_counter}/{early_stopping}")
                     if early_stopping_counter >= early_stopping:
                         print("Early stopping triggered.")
                         break
