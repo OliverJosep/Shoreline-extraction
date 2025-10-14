@@ -20,7 +20,7 @@ from src.models.data_management.cnn_formes import CNNFormes
 from typing import Tuple
 
 class BaseModel(ABC):
-    def __init__(self, model: nn.Module, classes: int = 0, experiment_name:str = "default_experiment", use_mlflow: bool = False) -> None:
+    def __init__(self, model: nn.Module, classes: int = 0, experiment_name:str = "default_experiment", use_mlflow: bool = False, network_name: str = None) -> None:
         """
         Initializes the BaseModel object.
 
@@ -37,6 +37,7 @@ class BaseModel(ABC):
         self.model = model
         self.classes = classes
         self.use_mlflow = use_mlflow
+        self.network_name = network_name if network_name else model.__class__.__name__
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -84,6 +85,7 @@ class BaseModel(ABC):
         """
 
         self.data = DataLoaderManager.load_data(data_source)
+        self.batch_size = batch_size
 
         self.train_formes = DataLoaderManager.generate_formes(self.data["train"]["images"], self.data["train"]["masks"], formes_class, resize_shape=resize_shape)
         self.train_loader = DataLoaderManager.generate_data_loaders(self.train_formes, batch_size, shuffle=True)
@@ -164,7 +166,7 @@ class BaseModel(ABC):
         # Start the MLflow run
         if self.use_mlflow:
             self.mlflow_manager.start_run(self.artifact_name)
-            self.mlflow_manager.log_params({"epochs": epochs, "loss_function": loss_function_name, "optimizer": optimizer_name, "learning_rate": learning_rate, "early_stopping": early_stopping, "weight": weight})
+            self.mlflow_manager.log_params({"network": self.network_name, "epochs": epochs, "loss_function": loss_function_name, "optimizer": optimizer_name, "learning_rate": learning_rate, "early_stopping": early_stopping, "batch_size": self.batch_size, "weight": weight})
             if run_description:
                 self.mlflow_manager.log_tag("mlflow.note.content", run_description)
 
@@ -184,8 +186,8 @@ class BaseModel(ABC):
             early_stopping_counter = 0
             best_validation_loss = float('inf')
 
-            metrics_train = Metrics(phase='train', num_classes=self.classes, average='micro', compute_loss=True, save_path=self.artifact_path)
-            metrics_validation = Metrics(phase='validation', num_classes=self.classes, average='micro', compute_loss=True, save_path=self.artifact_path)
+            metrics_train = Metrics(phase='train', num_classes=self.classes, average='macro', compute_loss=True, save_path=self.artifact_path)
+            metrics_validation = Metrics(phase='validation', num_classes=self.classes, average='macro', compute_loss=True, save_path=self.artifact_path)
 
             for epoch in range(epochs):
                 print(f"Epoch {epoch + 1}/{epochs}")
@@ -247,6 +249,34 @@ class BaseModel(ABC):
                     if early_stopping_counter >= early_stopping:
                         print("Early stopping triggered.")
                         break
+
+            # Training completed
+            print("Training completed.")
+            # Test the model if the test set is available
+            if "test" in self.data:
+                print("Testing the model on the test set.")
+                # load the best model
+                if self.artifact_path:
+                    self.load_model(os.path.join(self.artifact_path, "models", "best_model.pth"))
+
+                self.model.eval()
+                metrics_test = Metrics(phase='test', num_classes=self.classes, average='macro', compute_loss=True, save_path=self.artifact_path)
+
+                with torch.no_grad():
+                    for input_image, target in self.test_loader:
+                        input_image = input_image.to(self.device)
+                        target = target.to(self.device)
+
+                        test_loss, preds = self.validate_step(input_image, target, loss_function)
+                        metrics_test.update_loss(test_loss)
+                        metrics_test.update_metrics(preds, target)
+
+                metrics_test.compute()
+                print(metrics_test.get_last_epoch_info())
+                metrics_test.save_metrics_to_json()
+                if self.use_mlflow:
+                    self.mlflow_manager.log_metrics(metrics_test.get_last_epoch_info_dict(), epoch)
+                print("Testing completed.")
 
         except KeyboardInterrupt:
             print("Training interrupted by user. Closing MLflow run.")
