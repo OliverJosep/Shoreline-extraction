@@ -20,7 +20,7 @@ from typing import Type
 import torch
 import gc
 
-MLFLOW_EXPERIMENT_NAME = "shoreline_search_best_patchify"
+MLFLOW_EXPERIMENT_NAME = "shoreline_search_best_cnn"
 
 image_type_paths = {
     "oblique": {
@@ -34,28 +34,16 @@ image_type_paths = {
 }
 
 networks: dict[str, Type[CNNModel]] = {
-    # "UNet": UNet,
-    # "AttentionUNet": Attention_UNet,
+    "UNet": UNet,
+    "AttentionUNet": Attention_UNet,
     "DeepLabV3": DeepLabV3,
-    # "DuckNet": DuckNet
+    "DuckNet": DuckNet
 }
 
 patches = {
     "256x256": {
         "patch_size": (256, 256),
         "stride": (128, 128)
-    },
-    "256x512": {
-        "patch_size": (256, 512),
-        "stride": (128, 256)
-    },
-    "256x1024": {
-        "patch_size": (256, 1024),
-        "stride": (128, 512)
-    }, 
-    "512x512": {
-        "patch_size": (512, 512),
-        "stride": (256, 256)
     }
 }
 
