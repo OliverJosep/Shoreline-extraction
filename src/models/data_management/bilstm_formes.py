@@ -8,12 +8,11 @@ from albumentations.pytorch import ToTensorV2
 class BiLSTMFormesDataset(torch.utils.data.Dataset):
 
     DEFAULT_TRANSFORM = A.Compose([
-        # A.Resize(256, 256),
         A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)), # A.Normalize(mean=(0.4288, 0.4513, 0.4601), std=(0.3172, 0.3094, 0.3120)),  # Normalization adjusted for SCLabels dataset
         ToTensorV2(),
     ])
 
-    def __init__(self, imgs_path: List[str], labels_path: List[str] = None, transform: Optional[A.Compose] = None):
+    def __init__(self, imgs_path: List[str], labels_path: List[str] = None, transform: Optional[A.Compose] = None, resize_shape: Tuple[int, int] = None):
         """
         Initializes the CNNFormes dataset.
 
