@@ -69,6 +69,6 @@ def transform_mask_to_shoreline_from_img(pred, no_data=0, landward=75, seaward=1
 
     # Create a mask for the largest contour
     largest_shoreline = np.zeros_like(shoreline)
-    cv2.drawContours(largest_shoreline, [largest_contour], -1, 1)
+    cv2.drawContours(largest_shoreline, [largest_contour], -1, 1, thickness=1)
 
     return largest_shoreline

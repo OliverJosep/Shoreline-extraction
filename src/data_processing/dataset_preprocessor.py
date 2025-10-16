@@ -172,7 +172,7 @@ class DatasetPreprocessor:
 
         return new_img, new_mask
 
-    def mask_mappping(self, mask: np.array, mapping: dict) -> np.array:
+    def mask_mapping(self, mask: np.array, mapping: dict) -> np.array:
         """
         Maps the mask classes to the new classes.
 
@@ -238,7 +238,7 @@ class DatasetPreprocessor:
         img, mask = self.remove_rows_with_background(img, mask, background_class)
         img, mask = self.remove_cols_with_background(img, mask, background_class)
         img, mask = self.remove_rows_with_background_and_shoreline(img, mask, background_class, shoreline_class=type_class) # 255 is the class for the shoreline
-        mask = self.mask_mappping(mask, mask_mapping) # 25 is the class for the not classified pixels
+        mask = self.mask_mapping(mask, mask_mapping) # 25 is the class for the not classified pixels
 
         return img, mask
 
@@ -259,7 +259,7 @@ class DatasetPreprocessor:
         img, mask = self.remove_rows_with_some_background(img, mask, background_class = 25)
         img, mask = self.remove_rows_with_some_background(img, mask, background_class = 0)
         img, mask = self.remove_cols_with_some_background(img, mask, background_class)
-        mask = self.mask_mappping(mask, mask_mapping) # 25 is the class for the not classified pixels
+        mask = self.mask_mapping(mask, mask_mapping) # 25 is the class for the not classified pixels
         return img, mask
 
     def preprocess(self, dataset_path: str, dataset_output_path: str, mask_mapping: dict = None, oblique: bool = False) -> None:
