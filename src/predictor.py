@@ -43,8 +43,6 @@ class ShorelinePredictor:
 
     def _predict(self, img: np.ndarray, crop_coords: tuple, patch_size: tuple, stride: tuple, landward_pixel: int, seaward_pixel: int) -> np.ndarray:
 
-        print(crop_coords)
-
         # 1. Extract the ROI from the input image
         roi = crop(img, crop_coords[0], crop_coords[1])
 
@@ -67,16 +65,21 @@ class ShorelinePredictor:
         final_img = apply_masks(merged_img_with_pred, mask_pred, shoreline_pixel_predicted_mask=1)
         img_with_pred = merge_masks(img, final_img, crop_coords[0], crop_coords[1])
 
-        full_mask = np.zeros((img.shape[0], img.shape[1]), dtype=np.uint8)
-        full_mask = merge_masks(full_mask, mask_pred, crop_coords[0], crop_coords[1])
+        # Mask only with shoreline pixels
+        full_mask_shoreline = np.zeros((img.shape[0], img.shape[1]), dtype=np.uint8)
+        full_mask_shoreline = merge_masks(full_mask_shoreline, mask_pred, crop_coords[0], crop_coords[1])
+
+        full_mask_pred = np.zeros((img.shape[0], img.shape[1]), dtype=np.uint8)
+        full_mask_pred = merge_masks(full_mask_pred, pred_np, crop_coords[0], crop_coords[1])
 
         # 5. Obtain coords of the shoreline pixels
-        shoreline_coords = np.column_stack(np.where(full_mask == 1))
+        shoreline_coords = np.column_stack(np.where(full_mask_shoreline == 1))
         shoreline_coords = self.format_coordinates(shoreline_coords)
         
         output = {
             "predicted_image": img_with_pred,
-            "shoreline_mask": full_mask,
+            "shoreline_mask": full_mask_shoreline,
+            "predicted_mask": full_mask_pred,
             "shoreline_coords": shoreline_coords
         }
 
