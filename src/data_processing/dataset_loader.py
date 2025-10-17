@@ -142,7 +142,7 @@ class CoastData:
 
         return [entry['image']['filename'] for entry in self.metadata if entry['image']['site']['CSname'] == station_name], [entry['image']['oblique_path'].split('/')[-1] for entry in self.metadata if entry['image']['site']['CSname'] == station_name]
 
-    def split_data(self, val_size: float = 0.2, test_size: float = 0.1, random_state: int = 42):
+    def split_data(self, val_size: float = 0.2, test_size: float = 0.1, random_state: int = 42, get_coords: bool = False):
         """
         Splits the dataset into training, validation, and test sets based on the specified sizes.
 
@@ -184,7 +184,10 @@ class CoastData:
         for station_name in station_names:
 
             # Get the image and mask filenames for the coastal site
-            coast_data = self.get_images_and_masks(station_name=station_name)
+            if get_coords:
+                coast_data = self.get_images_and_shooreline_coords(station_name=station_name)
+            else:
+                coast_data = self.get_images_and_masks(station_name=station_name)
 
             # Shuffle the data
             random.shuffle(coast_data)
@@ -198,18 +201,27 @@ class CoastData:
             start = 0
             end = int(total * train_size)
             data['train']['images'].extend([entry['image'] for entry in coast_data[start:end]])
-            data['train']['masks'].extend([entry['mask'] for entry in coast_data[start:end]])
+            if get_coords:
+                data['train']['masks'].extend([entry['shoreline_coords'] for entry in coast_data[start:end]])
+            else:
+                data['train']['masks'].extend([entry['mask'] for entry in coast_data[start:end]])
 
             # Validation set
             start = end
             end = int(total * (train_size + val_size))
             data['validation']['images'].extend([entry['image'] for entry in coast_data[start:end]])
-            data['validation']['masks'].extend([entry['mask'] for entry in coast_data[start:end]])
+            if get_coords:
+                data['validation']['masks'].extend([entry['shoreline_coords'] for entry in coast_data[start:end]])
+            else:
+                data['validation']['masks'].extend([entry['mask'] for entry in coast_data[start:end]])
 
             # Test set
             if test_size > 0:
                 start = end
                 data['test']['images'].extend([entry['image'] for entry in coast_data[start:]])
-                data['test']['masks'].extend([entry['mask'] for entry in coast_data[start:]])
+                if get_coords:
+                    data['test']['masks'].extend([entry['shoreline_coords'] for entry in coast_data[start:]])
+                else:
+                    data['test']['masks'].extend([entry['mask'] for entry in coast_data[start:]])
 
         return data
