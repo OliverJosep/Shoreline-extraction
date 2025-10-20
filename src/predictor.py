@@ -42,7 +42,7 @@ class ShorelinePredictor:
         if model_path is not None:
             self.model.load_model(model_path)
 
-    def _predict(self, img: np.ndarray, crop_coords: tuple, patch_size: tuple, stride: tuple, landward_pixel: int, seaward_pixel: int) -> np.ndarray:
+    def _predict(self, img: np.ndarray, crop_coords: tuple, patch_size: tuple, stride: tuple, landward_pixel: int, seaward_pixel: int, for_matlab: bool = False) -> np.ndarray:
 
         # 1. Extract the ROI from the input image
         roi = crop(img, crop_coords[0], crop_coords[1])
@@ -80,7 +80,7 @@ class ShorelinePredictor:
 
         # 5. Obtain coords of the shoreline pixels
         shoreline_coords = np.column_stack(np.where(full_mask_shoreline == 1))
-        shoreline_coords = self.format_coordinates(shoreline_coords)
+        shoreline_coords = self.format_coordinates(shoreline_coords, for_matlab=True)
         
         output = {
             "predicted_image": img_with_pred,
@@ -96,8 +96,8 @@ class ShorelinePredictor:
 
         pred = self._predict(img, crop_coords, patch_size, stride, landward_pixel=0, seaward_pixel=1)
         return pred
-    
-    def predict_oblique_with_coords(self, image_path: str, shoreline_coords: dict, patch_size: tuple = (256, 512), stride: tuple = (128, 256)) -> np.ndarray:
+
+    def predict_oblique_with_coords(self, image_path: str, shoreline_coords: dict, patch_size: tuple = (256, 512), stride: tuple = (128, 256), for_matlab: bool = False) -> np.ndarray:
         # print(shoreline_coords)
         img = cv2.imread(image_path)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -143,7 +143,7 @@ class ShorelinePredictor:
 
         crop_coords = ((y_min, x_min), (y_max, x_max))
 
-        pred = self._predict(img, crop_coords, patch_size, stride, landward_pixel=0, seaward_pixel=1)
+        pred = self._predict(img, crop_coords, patch_size, stride, landward_pixel=0, seaward_pixel=1, for_matlab=for_matlab)
         
         return pred
 
@@ -179,10 +179,10 @@ class ShorelinePredictor:
 
         return pred
 
-    def format_coordinates(self, shoreline_coords: np.ndarray) -> dict:
+    def format_coordinates(self, shoreline_coords: np.ndarray, for_matlab: bool = False) -> dict:
         # Check if the array is empty to avoid errors
         if shoreline_coords.size == 0:
-            return {"coordinates": {"u": [], "v": []}}
+            return {"u": [], "v": []}
 
         # The first column (index 0) from np.where is 'y' or 'v'
         v_coords = shoreline_coords[:, 0].tolist()
@@ -190,11 +190,14 @@ class ShorelinePredictor:
         # The second column (index 1) is 'x' or 'u'
         u_coords = shoreline_coords[:, 1].tolist()
 
+        if for_matlab:
+            # Convert to 1-based indexing for MATLAB compatibility
+            v_coords = [v + 1 for v in v_coords]
+            u_coords = [u + 1 for u in u_coords]
+
         return {
-            "coordinates": {
-                "u": u_coords,
-                "v": v_coords
-            }
+            "u": u_coords,
+            "v": v_coords
         }
     
     def extract_roi_and_bbox_strict(self, mask, target_class_ids, hard_ignore_class_id):

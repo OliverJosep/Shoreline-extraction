@@ -120,10 +120,10 @@ class CoastData:
         """
 
         if station_name is None or station_name == 'global':
-            return [{'image': os.path.join(self.data_path, "images", entry['image']['filename']), 'shoreline_coords': entry['image']['shoreline']['coordinates']} 
+            return [{'image': os.path.join(self.data_path, "images", entry['image']['filename']), 'shoreline_coords': entry['image']['shoreline']['coordinates'], 'original_image_path': entry['image']['oblique_path'].split('/')[-1]} 
                 for entry in self.metadata]
-        
-        return [{'image': os.path.join(self.data_path, "images", entry['image']['filename']), 'shoreline_coords': entry['image']['shoreline']['coordinates']} 
+
+        return [{'image': os.path.join(self.data_path, "images", entry['image']['filename']), 'shoreline_coords': entry['image']['shoreline']['coordinates'], 'original_image_path': entry['image']['oblique_path'].split('/')[-1]} 
                 for entry in self.metadata if entry['image']['site']['CSname'] == station_name]
 
     def get_images(self, station_name: str = None):
@@ -166,14 +166,17 @@ class CoastData:
             'train': {
                 'images': [],
                 'masks': [],
+                'original_image_paths': [] if get_coords else None
             },
             'validation': {
                 'images': [],
                 'masks': [],
+                'original_image_paths': [] if get_coords else None
             },
             'test': {
                 'images': [],
                 'masks': [],
+                'original_image_paths': [] if get_coords else None
             }
         }
 
@@ -203,6 +206,7 @@ class CoastData:
             data['train']['images'].extend([entry['image'] for entry in coast_data[start:end]])
             if get_coords:
                 data['train']['masks'].extend([entry['shoreline_coords'] for entry in coast_data[start:end]])
+                data['train']['original_image_paths'].extend([entry['original_image_path'] for entry in coast_data[start:end]])
             else:
                 data['train']['masks'].extend([entry['mask'] for entry in coast_data[start:end]])
 
@@ -212,6 +216,7 @@ class CoastData:
             data['validation']['images'].extend([entry['image'] for entry in coast_data[start:end]])
             if get_coords:
                 data['validation']['masks'].extend([entry['shoreline_coords'] for entry in coast_data[start:end]])
+                data['validation']['original_image_paths'].extend([entry['original_image_path'] for entry in coast_data[start:end]])
             else:
                 data['validation']['masks'].extend([entry['mask'] for entry in coast_data[start:end]])
 
@@ -221,6 +226,7 @@ class CoastData:
                 data['test']['images'].extend([entry['image'] for entry in coast_data[start:]])
                 if get_coords:
                     data['test']['masks'].extend([entry['shoreline_coords'] for entry in coast_data[start:]])
+                    data['test']['original_image_paths'].extend([entry['original_image_path'] for entry in coast_data[start:]])
                 else:
                     data['test']['masks'].extend([entry['mask'] for entry in coast_data[start:]])
 
