@@ -61,7 +61,7 @@ class DatasetPreprocessorBiLSTM(DatasetPreprocessor):
         img, mask = self.transform_class_to_background(img, mask, type_class = 25, background_class = background_class) # 25 is the class for the not classified pixels
         img, mask = self.remove_rows_with_background(img, mask, background_class)
         img, mask = self.remove_cols_with_background(img, mask, background_class)
-        mask = self.mask_mappping(mask, mask_mapping) # 25 is the class for the not classified pixels
+        mask = self.mask_mapping(mask, mask_mapping) # 25 is the class for the not classified pixels
         img, mask = self.remove_rows_with_only_one_class(img, mask)
         mask = self.to_binary_mask(mask, type_class = 2)
         img, mask = self.remove_cols_with_background(img, mask, background_class=2)

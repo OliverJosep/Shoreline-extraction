@@ -9,91 +9,91 @@ from torch.utils.data import Dataset
 from src.models.data_management.bilstm_formes import BiLSTMFormesDataset
 
 class BiLSTM(BaseModel):
-    def __init__(self, num_classes: int = 1, experiment_name: str = "default_experiment", use_mlflow: bool = False, pretrained: bool = False, hidden_units: int = 45):
+    def __init__(self, num_classes: int = 1, experiment_name: str = "default_experiment", use_mlflow: bool = False, pretrained: bool = False, hidden_units: int = 45, oblique: bool = False):
         model: torch.nn.Module = BiLSTM_architecture(in_channels=3, out_channels=num_classes, hidden_units = hidden_units)        
         super().__init__(model=model, classes=num_classes, experiment_name=experiment_name, use_mlflow=use_mlflow)
         self.in_channels = 3
+        self.H_THRESHOLD = 150
+        self.oblique = oblique
 
     def train_step(self, input_image, target, loss_function, optimizer):
-        
-        # print(f"input_image shape: {input_image.shape}")
-        input_image = input_image.reshape(-1, input_image.shape[2], self.in_channels)
-
-        # Forward pass
-        output = self.forward_pass(input_image)
-
-        target = target.unsqueeze(dim=-1) 
-        target = target.squeeze(0)
-        target = target.float()
-
-        # Compute loss
-        sigmoid_output = torch.sigmoid(output)  # Apply sigmoid to output to get probabilities
-        loss = loss_function(sigmoid_output, target)
-
-        # Compute prediction
-        if self.classes > 1:
-            preds = torch.argmax(output, dim=1)  # [batch_size, height, width]
-        else:
-            # Apply sigmoid to output to get probabilities
-            probs = torch.sigmoid(output)  
-            preds = (probs > 0.5).float()  
-
-        # Backward pass
         optimizer.zero_grad()
-        loss.backward()
+
+        target = target.unsqueeze(dim=-1).squeeze(0).float()
+        
+        all_preds = []
+        total_loss_value = 0.0
+
+        total_loss_value, all_preds = self.process_recursive(input_image, target, loss_function, H_TOTAL=input_image.size(1))
         optimizer.step()
 
-        return loss.item(), preds
+        return total_loss_value, all_preds
 
     def validate_step(self, input_image, target, loss_function):
 
-        input_image = input_image.reshape(-1, input_image.shape[2], self.in_channels)
+        target = target.unsqueeze(dim=-1).squeeze(0).float()
+        
+        all_preds = []
+        total_loss_value = 0.0
 
-        # Forward pass
-        output = self.forward_pass(input_image)
+        total_loss_value, all_preds = self.process_recursive(input_image, target, loss_function, H_TOTAL=input_image.size(1), validation=True)
 
-        target = target.unsqueeze(dim=-1) 
-        target = target.squeeze(0)
-        target = target.float()
+        return total_loss_value, all_preds
 
-        # Compute loss
-        sigmoid_output = torch.sigmoid(output)  # Apply sigmoid to output to get probabilities
-        loss = loss_function(sigmoid_output, target)
-
-        # Compute predictions
-        if self.classes > 1:
-            preds = torch.argmax(output, dim=1)  # [batch_size, height, width]
-        else:
-            # Apply sigmoid to output to get probabilities
-            probs = torch.sigmoid(output)  
-            preds = (probs > 0.5).float()  
-
-        return loss.item(), preds
-
-    def predict(self, image_path, formes_class: Type[Dataset] = BiLSTMFormesDataset, raw_output = False):
+    def predict(self, image_path, formes_class: Type[Dataset] = BiLSTMFormesDataset, raw_output = False): # TODO: Check raw_output usage
         formes = formes_class(imgs_path=[image_path])
         input_image = formes[0] # Get the first element of the list, we only have one image
-
-        # Add the dimension of the batch
-        input_image = input_image.unsqueeze(0)
+        input_image = input_image.unsqueeze(0)  # Add batch dimension
 
         self.model.to(self.device)
         self.model.eval()
+
         with torch.no_grad():
             input_image = input_image.to(self.device)
-            input_image = input_image.reshape(-1, input_image.shape[2], self.in_channels)
+            output = self.process_recursive(input_image, None, loss_function=None, H_TOTAL=input_image.size(1), validation=True)[1]
 
-            output = self.forward_pass(input_image)
+        return output
 
-        if raw_output:
-            return output
-        
-        # Compute predictions
+    def process_recursive(self, chunk_in, chunk_target, loss_function, H_TOTAL, validation: bool = False):
+        current_h = chunk_in.size(1)
+
+        if self.oblique and current_h > self.H_THRESHOLD:
+            mid_point = current_h // 2
+            
+            chunk_in_1 = chunk_in[:, :mid_point, :]
+            chunk_in_2 = chunk_in[:, mid_point:, :]
+            
+            if chunk_target is not None:
+                chunk_target_1 = chunk_target[:mid_point]
+                chunk_target_2 = chunk_target[mid_point:]
+            else:
+                chunk_target_1 = None
+                chunk_target_2 = None
+
+            loss_1, preds_1 = self.process_recursive(chunk_in_1, chunk_target_1, loss_function, H_TOTAL, validation)
+            loss_2, preds_2 = self.process_recursive(chunk_in_2, chunk_target_2, loss_function, H_TOTAL, validation)
+
+            return (loss_1 + loss_2), torch.cat((preds_1, preds_2), dim=0)
+    
+        chunk_reshaped = chunk_in.reshape(-1, chunk_in.shape[2], self.in_channels)
+
+        output = self.forward_pass(chunk_reshaped)
+
+        sigmoid_output = torch.sigmoid(output)
+        if loss_function is not None:
+            loss = loss_function(sigmoid_output, chunk_target)
+
         if self.classes > 1:
-            pred = torch.argmax(output, dim=1)
+            preds = torch.argmax(output, dim=1)
         else:
-            # Apply sigmoid to output to get probabilities
-            prob = torch.sigmoid(output)  
-            pred = (prob > 0.5).float()
+            probs = torch.sigmoid(output)  
+            preds = (probs > 0.5).float()
         
-        return pred
+        if loss_function is None:
+            return 0.0, preds.detach()
+        
+        normalized_loss = loss * (current_h / H_TOTAL)
+        if not validation:
+            normalized_loss.backward()
+
+        return normalized_loss.item(), preds.detach()
