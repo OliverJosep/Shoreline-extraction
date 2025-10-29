@@ -88,7 +88,7 @@ class CoastData:
 
         return sorted(list(set([entry['image']['site']['CSname'] for entry in self.metadata])))
     
-    def get_images_and_masks(self, station_name: str = None):
+    def get_images_and_masks(self, station_name: str = None, metadata: bool = False):
         """
         Returns a list of dictionaries containing the image and mask filenames 
         for the specified coastal station or the entire dataset.
@@ -99,6 +99,13 @@ class CoastData:
         Returns:
         list: A list of dictionaries with 'image' and 'mask' full paths for each entry.
         """
+        if metadata:
+            if station_name is None or station_name == 'global':
+                return [{'image': os.path.join(self.data_path, "images", entry['image']['filename']), 'mask': os.path.join(self.data_path, "masks", entry['image']['mask']['filename']), 'metadata': entry} 
+                for entry in self.metadata]
+
+            return [{'image': os.path.join(self.data_path, "images", entry['image']['filename']), 'mask': os.path.join(self.data_path, "masks", entry['image']['mask']['filename']), 'metadata': entry} 
+                for entry in self.metadata if entry['image']['site']['CSname'] == station_name]
 
         if station_name is None or station_name == 'global':
             return [{'image': os.path.join(self.data_path, "images", entry['image']['filename']), 'mask': os.path.join(self.data_path, "masks", entry['image']['mask']['filename'])} 
@@ -209,11 +216,7 @@ class CoastData:
             if get_coords:
                 coast_data = self.get_images_and_shoreline_coords(station_name=station_name)
             else:
-                coast_data = self.get_images_and_masks(station_name=station_name)
-
-            if get_metadata:
-                # Get metadata for the coastal site
-                metadata = self.get_metadata(station_name=station_name)
+                coast_data = self.get_images_and_masks(station_name=station_name, metadata=get_metadata)
 
             # Shuffle the data
             random.shuffle(coast_data)
@@ -233,7 +236,7 @@ class CoastData:
             else:
                 data['train']['masks'].extend([entry['mask'] for entry in coast_data[start:end]])
             if get_metadata:
-                data['train']['metadata'].extend(metadata[start:end])
+                data['train']['metadata'].extend([entry['metadata'] for entry in coast_data[start:end]])
 
             # Validation set
             start = end
@@ -245,7 +248,7 @@ class CoastData:
             else:
                 data['validation']['masks'].extend([entry['mask'] for entry in coast_data[start:end]])
             if get_metadata:
-                data['validation']['metadata'].extend(metadata[start:end])
+                data['validation']['metadata'].extend([entry['metadata'] for entry in coast_data[start:end]])
 
             # Test set
             if test_size > 0:
@@ -257,6 +260,5 @@ class CoastData:
                 else:
                     data['test']['masks'].extend([entry['mask'] for entry in coast_data[start:]])
                 if get_metadata:
-                    data['test']['metadata'].extend(metadata[start:])
-                # break
+                    data['test']['metadata'].extend([entry['metadata'] for entry in coast_data[start:]])
         return data
