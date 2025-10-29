@@ -106,8 +106,8 @@ class CoastData:
         
         return [{'image': os.path.join(self.data_path, "images", entry['image']['filename']), 'mask': os.path.join(self.data_path, "masks", entry['image']['mask']['filename'])} 
                 for entry in self.metadata if entry['image']['site']['CSname'] == station_name]
-    
-    def get_images_and_shooreline_coords(self, station_name: str = None):
+
+    def get_images_and_shoreline_coords(self, station_name: str = None):
         """
         Returns a list of dictionaries containing the image filenames and shoreline coordinates
         for the specified coastal station or the entire dataset.
@@ -142,7 +142,23 @@ class CoastData:
 
         return [entry['image']['filename'] for entry in self.metadata if entry['image']['site']['CSname'] == station_name], [entry['image']['oblique_path'].split('/')[-1] for entry in self.metadata if entry['image']['site']['CSname'] == station_name]
 
-    def split_data(self, val_size: float = 0.2, test_size: float = 0.1, random_state: int = 42, get_coords: bool = False):
+    def get_metadata(self, station_name: str = "global"):
+        """
+        Returns the metadata for the specified coastal station or the entire dataset.
+
+        Parameters:
+        station_name (str): The name of the coastal station. If "global", returns all metadata. Default: global
+
+        Returns:
+        dict: The metadata for the specified coastal station or the entire dataset.
+        """
+
+        if station_name == "global":
+            return self.metadata
+        
+        return [entry for entry in self.metadata if entry['image']['site']['CSname'] == station_name]
+
+    def split_data(self, val_size: float = 0.2, test_size: float = 0.1, random_state: int = 42, get_coords: bool = False, get_metadata: bool = False):
         """
         Splits the dataset into training, validation, and test sets based on the specified sizes.
 
@@ -166,17 +182,20 @@ class CoastData:
             'train': {
                 'images': [],
                 'masks': [],
-                'original_image_paths': [] if get_coords else None
+                'original_image_paths': [] if get_coords else None,
+                'metadata': [] if get_metadata else None
             },
             'validation': {
                 'images': [],
                 'masks': [],
-                'original_image_paths': [] if get_coords else None
+                'original_image_paths': [] if get_coords else None,
+                'metadata': [] if get_metadata else None
             },
             'test': {
                 'images': [],
                 'masks': [],
-                'original_image_paths': [] if get_coords else None
+                'original_image_paths': [] if get_coords else None,
+                'metadata': [] if get_metadata else None
             }
         }
 
@@ -188,9 +207,13 @@ class CoastData:
 
             # Get the image and mask filenames for the coastal site
             if get_coords:
-                coast_data = self.get_images_and_shooreline_coords(station_name=station_name)
+                coast_data = self.get_images_and_shoreline_coords(station_name=station_name)
             else:
                 coast_data = self.get_images_and_masks(station_name=station_name)
+
+            if get_metadata:
+                # Get metadata for the coastal site
+                metadata = self.get_metadata(station_name=station_name)
 
             # Shuffle the data
             random.shuffle(coast_data)
@@ -209,6 +232,8 @@ class CoastData:
                 data['train']['original_image_paths'].extend([entry['original_image_path'] for entry in coast_data[start:end]])
             else:
                 data['train']['masks'].extend([entry['mask'] for entry in coast_data[start:end]])
+            if get_metadata:
+                data['train']['metadata'].extend(metadata[start:end])
 
             # Validation set
             start = end
@@ -219,6 +244,8 @@ class CoastData:
                 data['validation']['original_image_paths'].extend([entry['original_image_path'] for entry in coast_data[start:end]])
             else:
                 data['validation']['masks'].extend([entry['mask'] for entry in coast_data[start:end]])
+            if get_metadata:
+                data['validation']['metadata'].extend(metadata[start:end])
 
             # Test set
             if test_size > 0:
@@ -229,5 +256,7 @@ class CoastData:
                     data['test']['original_image_paths'].extend([entry['original_image_path'] for entry in coast_data[start:]])
                 else:
                     data['test']['masks'].extend([entry['mask'] for entry in coast_data[start:]])
-
+                if get_metadata:
+                    data['test']['metadata'].extend(metadata[start:])
+                # break
         return data

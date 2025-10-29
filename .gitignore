@@ -6,6 +6,9 @@
 /artifacts/*
 !/artifacts/README.md
 
+oblique_predictions/*
+outputs/*
+
 # Mac OS
 
 .DS_Store
