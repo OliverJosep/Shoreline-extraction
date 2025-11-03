@@ -1,17 +1,10 @@
 import numpy as np
 import cv2
-from scipy.ndimage import distance_transform_edt
+from scipy.ndimage import binary_dilation
 
 def transform_to_binary(mask, value):
     mask = np.where(mask == value, 1, 0).astype(np.uint8)
     return mask
-
-def chamfer_distance(pred, ground_truth):
-    dist_transform = distance_transform_edt(1 - ground_truth)
-    distances = dist_transform[pred > 0]
-    mean_distance = np.mean(distances)
-
-    return mean_distance
 
 def find_shoreline(pred, land_pixel, sea_pixel):
     shoreline = np.zeros_like(pred)
@@ -30,6 +23,23 @@ def find_shoreline(pred, land_pixel, sea_pixel):
                 shoreline[i-1, j] = 1
             
     return shoreline
+
+def find_shoreline_scipy(pred, land_pixel, sea_pixel):
+    # The same logic as 'find_shoreline' but using scipy's binary_dilation for efficiency
+    # 1. Create binary masks for 'land' and 'sea'
+    is_land = (pred == land_pixel)
+    is_sea = (pred == sea_pixel)
+
+    # 2. Dilate the 'sea' mask
+    # 'binary_dilation' expands the 'True' (sea) area by one pixel
+    # in all four directions (up, down, left, right) by default.
+    # This is extremely fast.
+    dilated_sea = binary_dilation(is_sea)
+
+    # 3. The shoreline is where the original LAND touches the DILATED SEA
+    shoreline_mask = is_land & dilated_sea
+    
+    return shoreline_mask.astype(np.uint8)
 
 def find_largest_contour(shoreline_mask):
     contours, _ = cv2.findContours(shoreline_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -60,7 +70,8 @@ def transform_mask_to_shoreline(pred_path, no_data=0, landward=75, seaward=150):
 
 
 def transform_mask_to_shoreline_from_img(pred, no_data=0, landward=75, seaward=150):
-    shoreline = find_shoreline(pred, landward, seaward)
+    shoreline = find_shoreline_scipy(pred, landward, seaward)
+    # shoreline = find_shoreline(pred, landward, seaward)
 
     largest_contour = find_largest_contour(shoreline)
 

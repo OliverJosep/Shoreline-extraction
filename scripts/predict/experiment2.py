@@ -69,7 +69,7 @@ def main():
 
         data = CoastData(data_path)
 
-        filtered_data = data.get_images_and_masks() 
+        filtered_data = data.get_images() 
 
         filtered_data = data.split_data()
 

@@ -87,85 +87,53 @@ class CoastData:
         """
 
         return sorted(list(set([entry['image']['site']['CSname'] for entry in self.metadata])))
-    
-    def get_images_and_masks(self, station_name: str = None, metadata: bool = False):
+
+    def get_images(self, station_name: str = None, get_mask: bool = True, get_shoreline_coords: bool = False, get_all_metadata: bool = False, get_filename: bool = False, get_original_image_path: bool = False):
         """
-        Returns a list of dictionaries containing the image and mask filenames 
-        for the specified coastal station or the entire dataset.
-
-        Parameters:
-        station_name (str): The name of the coastal station. If None, returns all images and masks. Default: None
-
-        Returns:
-        list: A list of dictionaries with 'image' and 'mask' full paths for each entry.
-        """
-        if metadata:
-            if station_name is None or station_name == 'global':
-                return [{'image': os.path.join(self.data_path, "images", entry['image']['filename']), 'mask': os.path.join(self.data_path, "masks", entry['image']['mask']['filename']), 'metadata': entry} 
-                for entry in self.metadata]
-
-            return [{'image': os.path.join(self.data_path, "images", entry['image']['filename']), 'mask': os.path.join(self.data_path, "masks", entry['image']['mask']['filename']), 'metadata': entry} 
-                for entry in self.metadata if entry['image']['site']['CSname'] == station_name]
-
-        if station_name is None or station_name == 'global':
-            return [{'image': os.path.join(self.data_path, "images", entry['image']['filename']), 'mask': os.path.join(self.data_path, "masks", entry['image']['mask']['filename'])} 
-                for entry in self.metadata]
-        
-        return [{'image': os.path.join(self.data_path, "images", entry['image']['filename']), 'mask': os.path.join(self.data_path, "masks", entry['image']['mask']['filename'])} 
-                for entry in self.metadata if entry['image']['site']['CSname'] == station_name]
-
-    def get_images_and_shoreline_coords(self, station_name: str = None):
-        """
-        Returns a list of dictionaries containing the image filenames and shoreline coordinates
-        for the specified coastal station or the entire dataset.
-
-        Parameters:
-        station_name (str): The name of the coastal station. If None, returns all images and shoreline coordinates. Default: None
-
-        Returns:
-        list: A list of dictionaries with 'image' full paths and 'shoreline_coords' for each entry.
-        """
-
-        if station_name is None or station_name == 'global':
-            return [{'image': os.path.join(self.data_path, "images", entry['image']['filename']), 'shoreline_coords': entry['image']['shoreline']['coordinates'], 'original_image_path': entry['image']['oblique_path'].split('/')[-1]} 
-                for entry in self.metadata]
-
-        return [{'image': os.path.join(self.data_path, "images", entry['image']['filename']), 'shoreline_coords': entry['image']['shoreline']['coordinates'], 'original_image_path': entry['image']['oblique_path'].split('/')[-1]} 
-                for entry in self.metadata if entry['image']['site']['CSname'] == station_name]
-
-    def get_images(self, station_name: str = None):
-        """
-        Returns a list of image filenames for the specified coastal station or the entire dataset.
+        Returns a list of image filenames for the specified coastal station or the entire dataset. Optionally includes masks, shoreline coordinates, original image paths, and all metadata.
 
         Parameters:
         station_name (str): The name of the coastal station. If None, returns all images. Default: None
+        get_mask (bool): If True, includes the mask file paths in the results. Default: True
+        get_shoreline_coords (bool): If True, includes the shoreline coordinates in the results. Default: False
+        get_all_metadata (bool): If True, includes all metadata in the results. Default: False
+        get_filename (bool): If True, includes only the image filename in the results. Default: False
+        get_original_image_path (bool): If True, includes the original image path in the results. Default: False
 
         Returns:
         list: A list of image full paths.
         """
-
         if station_name is None or station_name == 'global':
-            return [entry['image']['filename'] for entry in self.metadata], [entry['image']['oblique_path'].split('/')[-1] for entry in self.metadata]
+            entries_to_process = self.metadata
+        else:
+            entries_to_process = [
+                entry for entry in self.metadata 
+                if entry['image']['site']['CSname'] == station_name
+            ]
 
-        return [entry['image']['filename'] for entry in self.metadata if entry['image']['site']['CSname'] == station_name], [entry['image']['oblique_path'].split('/')[-1] for entry in self.metadata if entry['image']['site']['CSname'] == station_name]
-
-    def get_metadata(self, station_name: str = "global"):
-        """
-        Returns the metadata for the specified coastal station or the entire dataset.
-
-        Parameters:
-        station_name (str): The name of the coastal station. If "global", returns all metadata. Default: global
-
-        Returns:
-        dict: The metadata for the specified coastal station or the entire dataset.
-        """
-
-        if station_name == "global":
-            return self.metadata
+        results = []
+        for entry in entries_to_process:
+            image_data = entry['image']
         
-        return [entry for entry in self.metadata if entry['image']['site']['CSname'] == station_name]
+            item = {
+                'image': os.path.join(self.data_path, "images", image_data['filename'])
+            }
+            if get_mask:
+                item['mask'] = os.path.join(self.data_path, "masks", image_data['mask']['filename'])
+            if get_shoreline_coords:
+                item['shoreline_coords'] = image_data['shoreline']['coordinates']
+            if get_original_image_path:
+                item['original_image_path'] = os.path.basename(image_data['oblique_path'])
+            if get_filename:
+                item['filename'] = image_data['filename']
+            if get_all_metadata:
+                item['metadata'] = entry
+            
+            results.append(item)
 
-    def split_data(self, val_size: float = 0.2, test_size: float = 0.1, random_state: int = 42, get_coords: bool = False, get_metadata: bool = False):
+        return results
+    
+    def split_data(self, val_size: float = 0.2, test_size: float = 0.1, random_state: int = 42, get_mask: bool = True, get_coords: bool = False, get_metadata: bool = False):
         """
         Splits the dataset into training, validation, and test sets based on the specified sizes.
 
@@ -212,11 +180,13 @@ class CoastData:
         # Shuffle the data for each coastal site
         for station_name in station_names:
 
-            # Get the image and mask filenames for the coastal site
-            if get_coords:
-                coast_data = self.get_images_and_shoreline_coords(station_name=station_name)
-            else:
-                coast_data = self.get_images_and_masks(station_name=station_name, metadata=get_metadata)
+            coast_data = self.get_images(
+                station_name=station_name, 
+                get_mask=get_mask, 
+                get_shoreline_coords=get_coords, 
+                get_all_metadata=get_metadata,
+                get_original_image_path=get_coords
+            )
 
             # Shuffle the data
             random.shuffle(coast_data)
@@ -233,7 +203,7 @@ class CoastData:
             if get_coords:
                 data['train']['masks'].extend([entry['shoreline_coords'] for entry in coast_data[start:end]])
                 data['train']['original_image_paths'].extend([entry['original_image_path'] for entry in coast_data[start:end]])
-            else:
+            if get_mask:
                 data['train']['masks'].extend([entry['mask'] for entry in coast_data[start:end]])
             if get_metadata:
                 data['train']['metadata'].extend([entry['metadata'] for entry in coast_data[start:end]])
@@ -245,7 +215,7 @@ class CoastData:
             if get_coords:
                 data['validation']['masks'].extend([entry['shoreline_coords'] for entry in coast_data[start:end]])
                 data['validation']['original_image_paths'].extend([entry['original_image_path'] for entry in coast_data[start:end]])
-            else:
+            if get_mask:
                 data['validation']['masks'].extend([entry['mask'] for entry in coast_data[start:end]])
             if get_metadata:
                 data['validation']['metadata'].extend([entry['metadata'] for entry in coast_data[start:end]])
@@ -257,7 +227,7 @@ class CoastData:
                 if get_coords:
                     data['test']['masks'].extend([entry['shoreline_coords'] for entry in coast_data[start:]])
                     data['test']['original_image_paths'].extend([entry['original_image_path'] for entry in coast_data[start:]])
-                else:
+                if get_mask:
                     data['test']['masks'].extend([entry['mask'] for entry in coast_data[start:]])
                 if get_metadata:
                     data['test']['metadata'].extend([entry['metadata'] for entry in coast_data[start:]])
