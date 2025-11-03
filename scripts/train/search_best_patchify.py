@@ -23,10 +23,10 @@ import gc
 MLFLOW_EXPERIMENT_NAME = "shoreline_search_best_patchify"
 
 image_type_paths = {
-    "oblique": {
-        "path": os.path.abspath(os.path.join(os.getcwd(), "data/processed_obliques_2_classes/")),
-        "num_classes": 2
-    },
+    # "oblique": {
+    #     "path": os.path.abspath(os.path.join(os.getcwd(), "data/processed_obliques_2_classes/")),
+    #     "num_classes": 2
+    # },
     "rectified": {
         "path": os.path.abspath(os.path.join(os.getcwd(), "data/processed_rectified_3_classes/")),
         "num_classes": 3
@@ -41,10 +41,10 @@ networks: dict[str, Type[CNNModel]] = {
 }
 
 patches = {
-    "256x256": {
-        "patch_size": (256, 256),
-        "stride": (128, 128)
-    },
+    # "256x256": {
+    #     "patch_size": (256, 256),
+    #     "stride": (128, 128)
+    # },
     "256x512": {
         "patch_size": (256, 512),
         "stride": (128, 256)
@@ -84,7 +84,7 @@ def main():
         for key in patches.keys():
             print(f"\nGenerating patches for {key}")
 
-            output_dir = os.path.abspath(os.path.join(os.getcwd(), f"data/patchify_2_classes_{data_type}_{key}/"))
+            output_dir = os.path.abspath(os.path.join(os.getcwd(), f"data/patchify_{num_classes}_classes_{data_type}_{key}/"))
             if not os.path.exists(output_dir):
                 print(f"\tCreating directory {output_dir}...")
                 os.makedirs(output_dir)
@@ -97,7 +97,7 @@ def main():
             print(f"\n{'='*30}\nStarting training for {network}\n{'='*30}")
     
             for key in patches.keys():
-                output_dir = os.path.abspath(os.path.join(os.getcwd(), f"data/patchify_2_classes_{data_type}_{key}/"))
+                output_dir = os.path.abspath(os.path.join(os.getcwd(), f"data/patchify_{num_classes}_classes_{data_type}_{key}/"))
 
                 # Load the data split
                 print(f"\nLoading data for {key}")

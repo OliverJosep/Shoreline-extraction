@@ -72,7 +72,7 @@ def main():
         for key in patches.keys():
             print(f"\nGenerating patches for {key}")
 
-            output_dir = os.path.abspath(os.path.join(os.getcwd(), f"data/patchify_2_classes_{data_type}_{key}/"))
+            output_dir = os.path.abspath(os.path.join(os.getcwd(), f"data/patchify_{num_classes}_classes_{data_type}_{key}/"))
             if not os.path.exists(output_dir):
                 print(f"\tCreating directory {output_dir}...")
                 os.makedirs(output_dir)
@@ -85,7 +85,7 @@ def main():
             print(f"\n{'='*30}\nStarting training for {network}\n{'='*30}")
     
             for key in patches.keys():
-                output_dir = os.path.abspath(os.path.join(os.getcwd(), f"data/patchify_2_classes_{data_type}_{key}/"))
+                output_dir = os.path.abspath(os.path.join(os.getcwd(), f"data/patchify_{num_classes}_classes_{data_type}_{key}/"))
 
                 # Load the data split
                 print(f"\nLoading data for {key}")
