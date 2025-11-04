@@ -42,7 +42,7 @@ class ShorelinePredictor:
         if model_path is not None:
             self.model.load_model(model_path)
 
-    def _predict(self, img: np.ndarray, crop_coords: tuple, patch_size: tuple, stride: tuple, landward_pixel: int, seaward_pixel: int, for_matlab: bool = False, draw_original_shoreline: bool = False, mask: np.ndarray = None, mask_only_shoreline: bool = False) -> np.ndarray:
+    def _predict(self, img: np.ndarray, crop_coords: tuple, patch_size: tuple, stride: tuple, landward_pixel: int, seaward_pixel: int, for_matlab: bool = False, mask: np.ndarray = None, mask_only_shoreline: bool = False, extract_gt_mask_coords: bool = False) -> np.ndarray:
 
         # 1. Extract the ROI from the input image
         roi = crop(img, crop_coords[0], crop_coords[1])
@@ -62,15 +62,13 @@ class ShorelinePredictor:
         pred_np = pred.cpu().numpy().astype(np.uint8)
 
         # Get shoreline from prediction
-        mask_pred = obtain_shoreline.transform_mask_to_shoreline_from_img(pred_np, landward=landward_pixel, seaward=seaward_pixel) # TODO: Analyse this code because is very slow
+        mask_pred = obtain_shoreline.transform_mask_to_shoreline_from_img(pred_np, landward=landward_pixel, seaward=seaward_pixel)
 
         # 4. Merge with original image
         if mask is not None:
-            if (mask_only_shoreline):
-                original_shoreline_mask = mask
-            else:
-                original_shoreline_mask = obtain_shoreline.transform_mask_to_shoreline_from_img(mask, landward=landward_pixel, seaward=seaward_pixel)
-            final_img = apply_masks(merged_img_with_pred, mask_pred, shoreline_pixel_predicted_mask=1, original_mask=original_shoreline_mask, shoreline_pixel_original_mask=1)
+            if (not mask_only_shoreline):
+                mask = obtain_shoreline.transform_mask_to_shoreline_from_img(mask, landward=landward_pixel, seaward=seaward_pixel)
+            final_img = apply_masks(merged_img_with_pred, mask_pred, shoreline_pixel_predicted_mask=1, original_mask=mask, shoreline_pixel_original_mask=1)
         else:
             final_img = apply_masks(merged_img_with_pred, mask_pred, shoreline_pixel_predicted_mask=1)
         img_with_pred = merge_masks(img, final_img, crop_coords[0], crop_coords[1])
@@ -100,6 +98,13 @@ class ShorelinePredictor:
             "predicted_mask": full_mask_pred,
             "shoreline_coords": shoreline_coords
         }
+
+        if extract_gt_mask_coords and mask is not None:
+            original_mask = np.zeros((img.shape[0], img.shape[1]), dtype=np.uint8)
+            original_mask = merge_masks(original_mask, mask, crop_coords[0], crop_coords[1])
+            gt_shoreline_coords = np.column_stack(np.where(original_mask == 1))
+            gt_shoreline_coords = self.format_coordinates(gt_shoreline_coords, for_matlab=for_matlab)
+            output["original_shoreline_coords"] = gt_shoreline_coords
         return output
 
     def predict_roi(self, image_path: str, crop_coords: tuple, patch_size: tuple, stride: tuple) -> np.ndarray:
@@ -173,10 +178,6 @@ class ShorelinePredictor:
 
         mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
 
-        if extract_mask_coords:
-            shoreline_coords = np.column_stack(np.where(mask == 255))
-            shoreline_coords = self.format_coordinates(shoreline_coords, for_matlab=for_matlab)
-
         mapping = {
             0: 0,    # Background → Class 0
             25: 3,   # Not classified → Class 1
@@ -194,10 +195,7 @@ class ShorelinePredictor:
 
         crop = ((bbox_y_min, bbox_x_min), (bbox_y_max, bbox_x_max))
 
-        pred = self._predict(img, crop, patch_size, stride, landward_pixel=1, seaward_pixel=2, mask=new_mask, mask_only_shoreline=True)
-        
-        if extract_mask_coords:
-            pred["original_shoreline_coords"] = shoreline_coords
+        pred = self._predict(img, crop, patch_size, stride, landward_pixel=1, seaward_pixel=2, mask=new_mask, mask_only_shoreline=False, extract_gt_mask_coords=extract_mask_coords)
 
         return pred
 
