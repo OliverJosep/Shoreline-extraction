@@ -11,8 +11,9 @@ import matplotlib.pyplot as plt
 # Model imports
 from models.deeplab.deeplab import DeepLabV3
 from models.unet.unet import UNet
-from models.attention_unet import attention_unet
-from models.duck_net import duck_net
+from models.attention_unet.attention_unet import Attention_UNet
+from models.duck_net.duck_net import DuckNet
+from models.bilstm.bilstm import BiLSTM
 
 # Data processing imports
 from src.data_postprocessing import obtain_shoreline
@@ -23,7 +24,6 @@ class ShorelinePredictor:
     def __init__(self, model: str, model_path: str = None, num_classes: int = 2):
         self.model = self._select_model(model, num_classes)
         self.num_classes = num_classes
-
         self._load_model(model_path)
 
     def _select_model(self, model_name: str, num_classes: int) -> BaseModel:
@@ -32,9 +32,11 @@ class ShorelinePredictor:
         elif model_name.lower() == "unet":
             return UNet(num_classes=num_classes)
         elif model_name.lower() == "attention_unet" or model_name.lower() == "attentionunet":
-            return attention_unet.Attention_UNet(num_classes=num_classes)
+            return Attention_UNet(num_classes=num_classes)
         elif model_name.lower() == "ducknet":
-            return duck_net.DuckNet(num_classes=num_classes)
+            return DuckNet(num_classes=num_classes)
+        elif model_name.lower() == "bilstm":
+            return BiLSTM(num_classes=num_classes)
         else:
             raise ValueError(f"Model '{model_name}' is not supported.")
         
@@ -42,7 +44,7 @@ class ShorelinePredictor:
         if model_path is not None:
             self.model.load_model(model_path)
 
-    def _predict(self, img: np.ndarray, crop_coords: tuple, patch_size: tuple, stride: tuple, landward_pixel: int, seaward_pixel: int, for_matlab: bool = False, mask: np.ndarray = None, mask_only_shoreline: bool = False, extract_gt_mask_coords: bool = False) -> np.ndarray:
+    def _predict(self, img: np.ndarray, crop_coords: tuple, patch_size: tuple, stride: tuple, landward_pixel_gt: int, seaward_pixel_gt: int, landward_pixel_pred: int, seaward_pixel_pred: int, for_matlab: bool = False, mask: np.ndarray = None, mask_only_shoreline: bool = False, extract_gt_mask_coords: bool = False) -> np.ndarray:
 
         # 1. Extract the ROI from the input image
         roi = crop(img, crop_coords[0], crop_coords[1])
@@ -55,19 +57,22 @@ class ShorelinePredictor:
             cv2.imwrite(temp_path, cv2.cvtColor(roi, cv2.COLOR_RGB2BGR))
 
             # 2. Predict on the cropped image
-            pred = self.model.predict_patch(temp_path, combination="avg", patch_size=patch_size, stride=stride, padding_mode="reflect")
+            if isinstance(self.model, BiLSTM):
+                pred = self.model.predict(temp_path).squeeze().cpu()
+            else:
+                pred = self.model.predict_patch(temp_path, combination="avg", patch_size=patch_size, stride=stride, padding_mode="reflect")
 
         # 3. Post-process and extract the shoreline
         merged_img_with_pred = merge_image_with_mask(roi, pred, alpha=0.7, num_classes=self.num_classes)
         pred_np = pred.cpu().numpy().astype(np.uint8)
 
         # Get shoreline from prediction
-        mask_pred = obtain_shoreline.transform_mask_to_shoreline_from_img(pred_np, landward=landward_pixel, seaward=seaward_pixel)
+        mask_pred = obtain_shoreline.transform_mask_to_shoreline_from_img(pred_np, landward=landward_pixel_pred, seaward=seaward_pixel_pred)
 
         # 4. Merge with original image
         if mask is not None:
             if (not mask_only_shoreline):
-                mask = obtain_shoreline.transform_mask_to_shoreline_from_img(mask, landward=landward_pixel, seaward=seaward_pixel)
+                mask = obtain_shoreline.transform_mask_to_shoreline_from_img(mask, landward=landward_pixel_gt, seaward=seaward_pixel_gt)
             final_img = apply_masks(merged_img_with_pred, mask_pred, shoreline_pixel_predicted_mask=1, original_mask=mask, shoreline_pixel_original_mask=1)
         else:
             final_img = apply_masks(merged_img_with_pred, mask_pred, shoreline_pixel_predicted_mask=1)
@@ -167,7 +172,7 @@ class ShorelinePredictor:
 
         return pred
 
-    def predict_rectified_with_mask(self, image_path: str, mask_path: str, patch_size: tuple = (256, 256), stride: tuple = (128, 128), for_matlab: bool = False, extract_mask_coords: bool = False) -> np.ndarray:
+    def predict_rectified_with_mask(self, image_path: str, mask_path: str, patch_size: tuple = (256, 256), stride: tuple = (128, 128), for_matlab: bool = False, extract_mask_coords: bool = False, landward_pixel: int = 1, seaward_pixel: int = 2) -> np.ndarray:
         """
         Explicit method for SCLabels dataset with rectified images and masks. Ideally is designed to extract the ROI based on the mask provided to be able to compare the results with the ground truth.
         """
@@ -195,7 +200,7 @@ class ShorelinePredictor:
 
         crop = ((bbox_y_min, bbox_x_min), (bbox_y_max, bbox_x_max))
 
-        pred = self._predict(img, crop, patch_size, stride, landward_pixel=1, seaward_pixel=2, mask=new_mask, mask_only_shoreline=False, extract_gt_mask_coords=extract_mask_coords)
+        pred = self._predict(img, crop, patch_size, stride, landward_pixel_gt=1, seaward_pixel_gt=2, landward_pixel_pred=landward_pixel, seaward_pixel_pred=seaward_pixel, mask=new_mask, mask_only_shoreline=False, extract_gt_mask_coords=extract_mask_coords)
 
         return pred
 
