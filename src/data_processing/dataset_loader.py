@@ -232,3 +232,77 @@ class CoastData:
                 if get_metadata:
                     data['test']['metadata'].extend([entry['metadata'] for entry in coast_data[start:]])
         return data
+    
+    def split_data_kfold(self, k: int = 5, test_size: float = 0.1, random_state: int = 42, get_mask: bool = True, get_coords: bool = False, get_metadata: bool = False):
+        # Set the random seed
+        random.seed(random_state)
+
+        # Get the list of coastal site names
+        station_names = self.get_station_names()
+
+        # Initialize the lists for the training, validation, and test sets
+        data = {
+            'test': {
+                'images': [],
+                'masks': [],
+                'original_image_paths': [] if get_coords else None,
+                'metadata': [] if get_metadata else None
+            }
+        }
+
+        for fold in range(k):
+            data[f'fold_{fold}'] = {
+                'images': [],
+                'masks': [],
+                'original_image_paths': [] if get_coords else None,
+                'metadata': [] if get_metadata else None
+            }
+
+        # Shuffle the data for each coastal site
+        for station_name in station_names:
+
+            coast_data = self.get_images(
+                station_name=station_name, 
+                get_mask=get_mask, 
+                get_shoreline_coords=get_coords, 
+                get_all_metadata=get_metadata,
+                get_original_image_path=get_coords
+            )
+
+            # Shuffle the data
+            random.shuffle(coast_data)
+
+            # Calculate the total number of images
+            total = len(coast_data)
+
+            print(f"Coast: {station_name}, Total size: {len(coast_data)}")
+
+            # add last images to test set
+            if test_size > 0:
+                start = int(total * (1 - test_size))
+                data['test']['images'].extend([entry['image'] for entry in coast_data[start:]])
+                if get_coords:
+                    data['test']['masks'].extend([entry['shoreline_coords'] for entry in coast_data[start:]])
+                    data['test']['original_image_paths'].extend([entry['original_image_path'] for entry in coast_data[start:]])
+                if get_mask:
+                    data['test']['masks'].extend([entry['mask'] for entry in coast_data[start:]])
+                if get_metadata:
+                    data['test']['metadata'].extend([entry['metadata'] for entry in coast_data[start:]])
+                coast_data = coast_data[:start]
+                total = len(coast_data)
+
+            fold_size = total // k
+            for fold in range(k):
+                start = fold * fold_size
+                end = start + fold_size if fold != k - 1 else total
+
+                data[f'fold_{fold}']['images'].extend([entry['image'] for entry in coast_data[start:end]])
+                if get_coords:
+                    data[f'fold_{fold}']['masks'].extend([entry['shoreline_coords'] for entry in coast_data[start:end]])
+                    data[f'fold_{fold}']['original_image_paths'].extend([entry['original_image_path'] for entry in coast_data[start:end]])
+                if get_mask:
+                    data[f'fold_{fold}']['masks'].extend([entry['mask'] for entry in coast_data[start:end]])
+                if get_metadata:
+                    data[f'fold_{fold}']['metadata'].extend([entry['metadata'] for entry in coast_data[start:end]])
+
+        return data
