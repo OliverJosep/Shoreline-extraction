@@ -1,6 +1,7 @@
 import json
 import random
 import os
+import numpy as np
 
 class CoastData:
     """
@@ -233,76 +234,164 @@ class CoastData:
                     data['test']['metadata'].extend([entry['metadata'] for entry in coast_data[start:]])
         return data
     
-    def split_data_kfold(self, k: int = 5, test_size: float = 0.1, random_state: int = 42, get_mask: bool = True, get_coords: bool = False, get_metadata: bool = False):
-        # Set the random seed
-        random.seed(random_state)
+    # def split_data_kfold(self, k: int = 5, val_size: float = 0.2, test_size: float = 0.1, random_state: int = 42, get_mask: bool = True, get_coords: bool = False, get_metadata: bool = False):
+    #     # Set the random seed
+    #     random.seed(random_state)
 
-        # Get the list of coastal site names
+    #     # Get the list of coastal site names
+    #     station_names = self.get_station_names()
+
+    #     # Initialize the lists for the training, validation, and test sets
+    #     data = {}
+
+    #     train_size = 1 - (val_size + test_size)
+
+    #     for fold in range(k):
+    #         data[f'fold_{fold}'] = {
+    #             'train': self._init_empty_dict(get_coords, get_metadata),
+    #             'validation': self._init_empty_dict(get_coords, get_metadata),
+    #             'test': self._init_empty_dict(get_coords, get_metadata)
+    #         }
+
+
+    #         # Shuffle the data for each coastal site
+    #         for station_name in station_names:
+    #             coast_data = self.get_images(
+    #                 station_name=station_name, 
+    #                 get_mask=get_mask, 
+    #                 get_shoreline_coords=get_coords, 
+    #                 get_all_metadata=get_metadata,
+    #                 get_original_image_path=get_coords
+    #             )
+
+    #             # Shuffle the data
+    #             random.shuffle(coast_data)
+                
+    #             start = 0
+    #             total = len(coast_data)
+    #             end = int(total * train_size)
+    #             data[f'fold_{fold}']['train']['images'].extend([entry['image'] for entry in coast_data[start:end]])
+    #             if get_coords:
+    #                 data[f'fold_{fold}']['train']['masks'].extend([entry['shoreline_coords'] for entry in coast_data[start:end]])
+    #                 data[f'fold_{fold}']['train']['original_image_paths'].extend([entry['original_image_path'] for entry in coast_data[start:end]])
+    #             if get_mask:
+    #                 data[f'fold_{fold}']['train']['masks'].extend([entry['mask'] for entry in coast_data[start:end]])
+    #             if get_metadata:
+    #                 data[f'fold_{fold}']['train']['metadata'].extend([entry['metadata'] for entry in coast_data[start:end]])
+
+    #             # Validation set
+    #             start = end
+    #             end = int(total * (train_size + val_size))
+    #             data[f'fold_{fold}']['validation']['images'].extend([entry['image'] for entry in coast_data[start:end]])
+    #             if get_coords:
+    #                 data[f'fold_{fold}']['validation']['masks'].extend([entry['shoreline_coords'] for entry in coast_data[start:end]])
+    #                 data[f'fold_{fold}']['validation']['original_image_paths'].extend([entry['original_image_path'] for entry in coast_data[start:end]])
+    #             if get_mask:
+    #                 data[f'fold_{fold}']['validation']['masks'].extend([entry['mask'] for entry in coast_data[start:end]])
+    #             if get_metadata:
+    #                 data[f'fold_{fold}']['validation']['metadata'].extend([entry['metadata'] for entry in coast_data[start:end]])
+
+    #             # Test set
+    #             if test_size > 0:
+    #                 start = end
+    #                 data[f'fold_{fold}']['test']['images'].extend([entry['image'] for entry in coast_data[start:]])
+    #                 if get_coords:
+    #                     data[f'fold_{fold}']['test']['masks'].extend([entry['shoreline_coords'] for entry in coast_data[start:]])
+    #                     data[f'fold_{fold}']['test']['original_image_paths'].extend([entry['original_image_path'] for entry in coast_data[start:]])
+    #                 if get_mask:
+    #                     data[f'fold_{fold}']['test']['masks'].extend([entry['mask'] for entry in coast_data[start:]])
+    #                 if get_metadata:
+    #                     data[f'fold_{fold}']['test']['metadata'].extend([entry['metadata'] for entry in coast_data[start:]])
+
+    #     return data
+
+    def split_data_kfold(self, k: int = 5, 
+                         val_size_ratio: float = 0.2, # Ratio de Val sobre (Train+Val)
+                         test_size_ratio: float = 0.1, # Ratio de Test sobre (Total)
+                         random_state: int = 42, 
+                         get_mask: bool = True, 
+                         get_coords: bool = False, 
+                         get_metadata: bool = False):
+        
         station_names = self.get_station_names()
 
-        # Initialize the lists for the training, validation, and test sets
-        data = {
-            'test': {
-                'images': [],
-                'masks': [],
-                'original_image_paths': [] if get_coords else None,
-                'metadata': [] if get_metadata else None
+        data = {}
+        for i in range(k):
+            data[f'fold_{i}'] = {
+                'train': self._init_empty_dict(get_coords, get_metadata),
+                'validation': self._init_empty_dict(get_coords, get_metadata),
+                'test': self._init_empty_dict(get_coords, get_metadata)
             }
-        }
-
-        for fold in range(k):
-            data[f'fold_{fold}'] = {
-                'images': [],
-                'masks': [],
-                'original_image_paths': [] if get_coords else None,
-                'metadata': [] if get_metadata else None
-            }
-
-        # Shuffle the data for each coastal site
+            
+        all_station_data = {}
         for station_name in station_names:
-
-            coast_data = self.get_images(
+            station_data = self.get_images(
                 station_name=station_name, 
                 get_mask=get_mask, 
                 get_shoreline_coords=get_coords, 
                 get_all_metadata=get_metadata,
                 get_original_image_path=get_coords
             )
+            all_station_data[station_name] = station_data
+            
+        rng_seeds = [random_state + i for i in range(k)]
 
-            # Shuffle the data
-            random.shuffle(coast_data)
+        for i in range(k):
+            
+            fold_rng = np.random.default_rng(rng_seeds[i])
 
-            # Calculate the total number of images
-            total = len(coast_data)
-
-            print(f"Coast: {station_name}, Total size: {len(coast_data)}")
-
-            # add last images to test set
-            if test_size > 0:
-                start = int(total * (1 - test_size))
-                data['test']['images'].extend([entry['image'] for entry in coast_data[start:]])
-                if get_coords:
-                    data['test']['masks'].extend([entry['shoreline_coords'] for entry in coast_data[start:]])
-                    data['test']['original_image_paths'].extend([entry['original_image_path'] for entry in coast_data[start:]])
-                if get_mask:
-                    data['test']['masks'].extend([entry['mask'] for entry in coast_data[start:]])
-                if get_metadata:
-                    data['test']['metadata'].extend([entry['metadata'] for entry in coast_data[start:]])
-                coast_data = coast_data[:start]
+            for station_name, coast_data in all_station_data.items():
+                
                 total = len(coast_data)
+                
+                test_len = int(total * test_size_ratio)
+                if test_size_ratio > 0 and test_len == 0: test_len = 1
 
-            fold_size = total // k
-            for fold in range(k):
-                start = fold * fold_size
-                end = start + fold_size if fold != k - 1 else total
+                if k > 1:
+                    block_size = max(1, int((total - test_len) / (k - 1)))
+                else:
+                    block_size = 0
+                    
+                test_start = i * block_size
+                
+                if i == k - 1:
+                    test_start = total - test_len
+                
+                test_end = test_start + test_len
+                
+                test_chunk = coast_data[test_start:test_end]
+                train_val_pool = coast_data[:test_start] + coast_data[test_end:]
 
-                data[f'fold_{fold}']['images'].extend([entry['image'] for entry in coast_data[start:end]])
-                if get_coords:
-                    data[f'fold_{fold}']['masks'].extend([entry['shoreline_coords'] for entry in coast_data[start:end]])
-                    data[f'fold_{fold}']['original_image_paths'].extend([entry['original_image_path'] for entry in coast_data[start:end]])
-                if get_mask:
-                    data[f'fold_{fold}']['masks'].extend([entry['mask'] for entry in coast_data[start:end]])
-                if get_metadata:
-                    data[f'fold_{fold}']['metadata'].extend([entry['metadata'] for entry in coast_data[start:end]])
+                total_train_val = len(train_val_pool)
+                val_len = int(total_train_val * val_size_ratio)
+                train_len = total_train_val - val_len
+                
+                fold_rng.shuffle(train_val_pool)
+                
+                train_chunk = train_val_pool[:train_len]
+                val_chunk = train_val_pool[train_len:]
+                
+                fold_data = data[f'fold_{i}']
+                self._extend_data(fold_data['train'], train_chunk, get_mask, get_coords, get_metadata)
+                self._extend_data(fold_data['validation'], val_chunk, get_mask, get_coords, get_metadata)
+                self._extend_data(fold_data['test'], test_chunk, get_mask, get_coords, get_metadata)
 
         return data
+
+    def _init_empty_dict(self, get_coords: bool, get_metadata: bool):
+        return {
+            'images': [],
+            'masks': [],
+            'original_image_paths': [] if get_coords else None,
+            'metadata': [] if get_metadata else None
+        }
+    
+    def _extend_data(self, data_dict, chunk, get_mask, get_coords, get_metadata):
+        data_dict['images'].extend([entry['image'] for entry in chunk])
+        if get_coords:
+            data_dict['masks'].extend([entry['shoreline_coords'] for entry in chunk])
+            data_dict['original_image_paths'].extend([entry['original_image_path'] for entry in chunk])
+        if get_mask:
+            data_dict['masks'].extend([entry['mask'] for entry in chunk])
+        if get_metadata:
+            data_dict['metadata'].extend([entry['metadata'] for entry in chunk])
