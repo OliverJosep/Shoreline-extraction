@@ -46,7 +46,7 @@ class ShorelinePredictor:
         if model_path is not None:
             self.model.load_model(model_path)
 
-    def _predict(self, img: np.ndarray, crop_coords: tuple, patch_size: tuple, stride: tuple, landward_pixel_gt: int, seaward_pixel_gt: int, landward_pixel_pred: int, seaward_pixel_pred: int, for_matlab: bool = False, mask: np.ndarray = None, mask_only_shoreline: bool = False, extract_gt_mask_coords: bool = False) -> np.ndarray:
+    def _predict(self, img: np.ndarray, crop_coords: tuple, patch_size: tuple, stride: tuple, landward_pixel_gt: int, seaward_pixel_gt: int, landward_pixel_pred: int, seaward_pixel_pred: int, for_matlab: bool = False, mask: np.ndarray = None, mask_only_shoreline: bool = False, extract_gt_mask_coords: bool = False, update_pred_pixels: bool = True) -> np.ndarray:
 
         # 1. Extract the ROI from the input image
         roi = crop(img, crop_coords[0], crop_coords[1])
@@ -85,15 +85,16 @@ class ShorelinePredictor:
         full_mask_shoreline = merge_masks(full_mask_shoreline, mask_pred, crop_coords[0], crop_coords[1])
 
         full_mask_pred = np.zeros((img.shape[0], img.shape[1]), dtype=np.uint8)
-        if self.num_classes == 2: # If we have only two classes, we add a NoData class (0) to the final mask
+        if self.num_classes == 2 and update_pred_pixels: # If we have only two classes, we add a NoData class (0) to the final mask
             aux_pred_np = np.zeros_like(pred_np)
             aux_pred_np[pred_np == 0] = 1
             aux_pred_np[pred_np == 1] = 2
             pred_np = aux_pred_np
         full_mask_pred = merge_masks(full_mask_pred, pred_np, crop_coords[0], crop_coords[1])
-        full_mask_pred[full_mask_shoreline == 1] = 255
-        full_mask_pred[full_mask_pred == 1] = 75
-        full_mask_pred[full_mask_pred == 2] = 150
+        if update_pred_pixels:
+            full_mask_pred[full_mask_shoreline == 1] = 255
+            full_mask_pred[full_mask_pred == 1] = 75
+            full_mask_pred[full_mask_pred == 2] = 150
 
         # 5. Obtain coords of the shoreline pixels
         shoreline_coords = np.column_stack(np.where(full_mask_shoreline == 1))
@@ -113,6 +114,13 @@ class ShorelinePredictor:
             gt_shoreline_coords = self.format_coordinates(gt_shoreline_coords, for_matlab=for_matlab)
             output["original_shoreline_coords"] = gt_shoreline_coords
         return output
+
+    def predict(self, image_path: str, patch_size: tuple = (256, 512), stride: tuple = (128, 256), landward_pixel_gt: int = 0, seaward_pixel_gt: int = 1, landward_pixel_pred: int = 0, seaward_pixel_pred: int = 1) -> np.ndarray:
+        img = cv2.imread(image_path)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        
+        pred = self._predict(img, ((0,0), (img.shape[0], img.shape[1])), patch_size, stride, landward_pixel_gt=landward_pixel_gt, seaward_pixel_gt=seaward_pixel_gt, landward_pixel_pred=landward_pixel_pred, seaward_pixel_pred=seaward_pixel_pred, update_pred_pixels=False)
+        return pred
 
     def predict_roi(self, image_path: str, crop_coords: tuple, patch_size: tuple, stride: tuple) -> np.ndarray:
         img = cv2.imread(image_path)

@@ -10,10 +10,11 @@ import csv
 import json
 
 class Metrics():
-    def __init__(self, phase: str, num_classes: int = 1, average: str = 'macro', compute_loss: bool = False, use_margin: bool = False, margin: int = 10, save_path: str = None):
+    def __init__(self, phase: str, num_classes: int = 1, average: str = 'macro', compute_loss: bool = False, use_margin: bool = False, margin: int = 10, save_path: str = None, ignore_index: int = None):
         self.phase = phase
         self.num_classes = num_classes
         self.average = average
+        self.ignore_index = ignore_index
 
         self.save_path = save_path
 
@@ -33,7 +34,7 @@ class Metrics():
         is_multiclass = num_classes > 1
         index_class = 0 if is_multiclass else 1
 
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Nou
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.metrics = {}
         for name, metric_class_pair in metrics_classes.items():
@@ -42,7 +43,7 @@ class Metrics():
             posible_kwargs = {'num_classes': num_classes, 'average': average, "normalize": "true"}
             kwargs = {key: value for key, value in posible_kwargs.items() if key in metric_class.__init__.__code__.co_varnames}
 
-            self.metrics[name] = metric_class(**kwargs).to(self.device)  # Mou al mateix device
+            self.metrics[name] = metric_class(**kwargs).to(self.device)
 
         self.metrics_history = {name: [] for name in metrics_classes.keys()}
 
@@ -66,6 +67,11 @@ class Metrics():
 
         prediction = prediction.flatten().to(torch.int64).to(self.device)
         target = target.flatten().to(torch.int64).to(self.device)
+
+        if self.ignore_index is not None:
+            mask = target != self.ignore_index
+            prediction = prediction[mask]
+            target = target[mask]
 
         for key, metric in self.metrics.items():
             metric.update(prediction, target)
