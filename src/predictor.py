@@ -21,7 +21,9 @@ from src.data_processing.crop import crop, apply_masks, merge_image_with_mask, m
 from src.data_processing.dataset_preprocessor import DatasetPreprocessor
 
 class ShorelinePredictor:
-    def __init__(self, model: str, model_path: str = None, num_classes: int = 2):
+    def __init__(self, model: str, model_path: str = None, num_classes: int = 2, oblique: bool = False):
+
+        self.oblique = oblique
         self.model = self._select_model(model, num_classes)
         self.num_classes = num_classes
         self._load_model(model_path)
@@ -36,7 +38,7 @@ class ShorelinePredictor:
         elif model_name.lower() == "ducknet":
             return DuckNet(num_classes=num_classes)
         elif model_name.lower() == "bilstm":
-            return BiLSTM(num_classes=num_classes)
+            return BiLSTM(num_classes=num_classes, oblique=self.oblique)
         else:
             raise ValueError(f"Model '{model_name}' is not supported.")
         
@@ -116,7 +118,7 @@ class ShorelinePredictor:
         img = cv2.imread(image_path)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-        pred = self._predict(img, crop_coords, patch_size, stride, landward_pixel=0, seaward_pixel=1)
+        pred = self._predict(img, crop_coords, patch_size, stride, landward_pixel_pred=0, seaward_pixel_pred=1)
         return pred
 
     def predict_oblique_with_coords(self, image_path: str, shoreline_coords: dict, patch_size: tuple = (256, 512), stride: tuple = (128, 256), for_matlab: bool = False, extract_mask_coords: bool = False) -> np.ndarray:
@@ -161,7 +163,7 @@ class ShorelinePredictor:
         mask = np.zeros((height, width), dtype=np.uint8)
         cv2.polylines(mask, [np.array(points, dtype=np.int32)], isClosed=False, color=1, thickness=1)
 
-        pred = self._predict(img, crop_coords, patch_size, stride, landward_pixel=0, seaward_pixel=1, for_matlab=for_matlab, mask=mask, mask_only_shoreline=True)
+        pred = self._predict(img, crop_coords, patch_size, stride, landward_pixel_gt=1, seaward_pixel_gt=2, landward_pixel_pred=0, seaward_pixel_pred=1, for_matlab=for_matlab, mask=mask, mask_only_shoreline=True)
 
 
         shoreline_coords = np.column_stack(np.where(mask == 1))
