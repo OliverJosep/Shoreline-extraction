@@ -126,7 +126,7 @@ class ShorelinePredictor:
         img = cv2.imread(image_path)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-        pred = self._predict(img, crop_coords, patch_size, stride, landward_pixel_pred=0, seaward_pixel_pred=1)
+        pred = self._predict(img, crop_coords, patch_size, stride, landward_pixel_pred=0, seaward_pixel_pred=1, landward_pixel_gt=0, seaward_pixel_gt=1)
         return pred
 
     def predict_oblique_with_coords(self, image_path: str, shoreline_coords: dict, patch_size: tuple = (256, 512), stride: tuple = (128, 256), for_matlab: bool = False, extract_mask_coords: bool = False) -> np.ndarray:
