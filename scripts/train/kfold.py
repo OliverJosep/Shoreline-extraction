@@ -23,17 +23,18 @@ import os
 import torch
 import gc
 
+USE_MLFLOW = True
 MLFLOW_EXPERIMENT_NAME = "shoreline_kfold"
 
 image_type_paths = {
+    "rectified": {
+        "path": os.path.abspath(os.path.join(os.getcwd(), "data/processed_rectified_3_classes/")),
+        "num_classes": 3
+    },
     "oblique": {
         "path": os.path.abspath(os.path.join(os.getcwd(), "data/processed_obliques_2_classes/")),
         "num_classes": 2
-    },
-    # "rectified": {
-    #     "path": os.path.abspath(os.path.join(os.getcwd(), "data/processed_rectified_3_classes/")),
-    #     "num_classes": 3
-    # }
+    }
 }
 
 networks: dict[str, Type[CNNModel]] = {
@@ -118,29 +119,32 @@ def main():
 
         for network in networks:
             print(f"\n{'='*30}\nStarting training for {network}\n{'='*30}")
-    
-            for key in patches.keys():
-                output_dir = os.path.abspath(os.path.join(os.getcwd(), f"data/{k}fold/{data_type}/{fold}_patchify_{num_classes}_classes_{data_type}_{key}/"))
+            for fold in data_splits.keys():
+                print(f"\n{'-'*20}\nTraining fold: {fold}\n{'-'*20}")
+        
+                for key in patches.keys():
+                    output_dir = os.path.abspath(os.path.join(os.getcwd(), f"data/{k}fold/{data_type}/{fold}_patchify_{num_classes}_classes_{data_type}_{key}/"))
+                    # Load the data split
+                    print(f"\nLoading data for {key} - fold {fold}")
+                    print(f"\tFrom directory: {output_dir}")
 
-                # Load the data split
-                print(f"\nLoading data for {key}")
 
-                model = networks[network](num_classes, experiment_name=MLFLOW_EXPERIMENT_NAME, use_mlflow=True)
+                    model = networks[network](num_classes, experiment_name=MLFLOW_EXPERIMENT_NAME, use_mlflow=USE_MLFLOW)
 
-                model.load_data(output_dir, CNNFormes, batch_size=24, resize_shape=patches[key]["patch_size"])
+                    model.load_data(output_dir, CNNFormes, batch_size=24, resize_shape=patches[key]["patch_size"], drop_last=True)
 
-                # Training
-                print(f"\nTraining model for {key}")
-                run_name = f"{data_type}_{network}_{key}"
-                description = f"Dataset type: {data_type}, Training {network} with patch size {key}, patch_size={patches[key]['patch_size']}, stride={patches[key]['stride']}"
-                early_stopping = 10
-                model.train(epochs=100, artifact_path=artifact_path, run_name=run_name, run_description=description, early_stopping=early_stopping)
-                print(f"\tModel trained for {key}")
+                    # Training
+                    print(f"\nTraining model for {key} - fold {fold}")
+                    run_name = f"{data_type}_{fold}_{network}_{key}"
+                    description = f"Dataset type: {data_type}, Training {network} with patch size {key}, patch_size={patches[key]['patch_size']}, stride={patches[key]['stride']}, fold: {fold}"
+                    early_stopping = 10
+                    model.train(epochs=100, artifact_path=artifact_path, run_name=run_name, run_description=description, early_stopping=early_stopping)
+                    print(f"\tModel trained for {key} - fold {fold}")
 
-                # Clear memory
-                del model
-                gc.collect()
-                torch.cuda.empty_cache()
+                    # Clear memory
+                    del model
+                    gc.collect()
+                    torch.cuda.empty_cache()
 
 if __name__ == "__main__":
     main()

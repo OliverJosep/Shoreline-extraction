@@ -68,7 +68,7 @@ class BaseModel(ABC):
         """
         self.model.load_state_dict(torch.load(path, map_location=self.device, weights_only=True))
 
-    def load_data(self, data_source: Union[str, dict], formes_class: Type[Dataset], batch_size: int = 16, resize_shape: Tuple[int, int] = (256, 256)) -> None:
+    def load_data(self, data_source: Union[str, dict], formes_class: Type[Dataset], batch_size: int = 16, resize_shape: Tuple[int, int] = (256, 256), drop_last: bool = False) -> None:
         """
         The method to load the data from the given path.
 
@@ -76,6 +76,8 @@ class BaseModel(ABC):
         data_source (Union[str, dict]): The path to the data or a dictionary containing the data.
         formes_class (Type[Dataset]): The class of the Formes dataset.
         batch_size (int, optional): The batch size to use. Default is 16.
+        resize_shape (Tuple[int, int], optional): The shape to resize the images to. Default is (256, 256).
+        drop_last (bool, optional): Whether to drop the last incomplete batch. Default is False
 
         Raises:
         ValueError: If the data_source is not a string or a dictionary.
@@ -88,7 +90,7 @@ class BaseModel(ABC):
         self.batch_size = batch_size
 
         self.train_formes = DataLoaderManager.generate_formes(self.data["train"]["images"], self.data["train"]["masks"], formes_class, resize_shape=resize_shape)
-        self.train_loader = DataLoaderManager.generate_data_loaders(self.train_formes, batch_size, shuffle=True)
+        self.train_loader = DataLoaderManager.generate_data_loaders(self.train_formes, batch_size, shuffle=True, drop_last=drop_last)
 
         self.validation_formes = DataLoaderManager.generate_formes(self.data["validation"]["images"], self.data["validation"]["masks"], formes_class, resize_shape=resize_shape)
         self.validation_loader = DataLoaderManager.generate_data_loaders(self.validation_formes, batch_size, shuffle=False)
@@ -197,7 +199,6 @@ class BaseModel(ABC):
                 for (input_image, target) in self.train_loader:
                     input_image = input_image.to(self.device)
                     target = target.to(self.device)
-
                     train_loss, preds = self.train_step(input_image, target, loss_function, optimizer)
 
                     metrics_train.update_loss(train_loss)

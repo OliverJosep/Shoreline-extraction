@@ -142,15 +142,16 @@ class DataLoaderManager:
         return formes_class(X, y, resize_shape=resize_shape)
     
     @staticmethod
-    def generate_data_loaders(dataset: Dataset, batch_size: int = 16, shuffle: bool = False) -> DataLoader:
+    def generate_data_loaders(dataset: Dataset, batch_size: int = 16, shuffle: bool = False, drop_last: bool = False) -> DataLoader:
         """
         Generate data loaders.
 
         Parameters:
         batch_size (int, optional): The batch size to use. Default is 16.
         shuffle (bool, optional): Whether to shuffle the data. Default is False.
+        drop_last (bool, optional): Whether to drop the last incomplete batch. Default is False.
 
         Returns:
         DataLoader: The data loader.
         """
-        return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+        return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last)
