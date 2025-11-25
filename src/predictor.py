@@ -129,7 +129,7 @@ class ShorelinePredictor:
         pred = self._predict(img, crop_coords, patch_size, stride, landward_pixel_pred=0, seaward_pixel_pred=1, landward_pixel_gt=0, seaward_pixel_gt=1)
         return pred
 
-    def predict_oblique_with_coords(self, image_path: str, shoreline_coords: dict, patch_size: tuple = (256, 512), stride: tuple = (128, 256), for_matlab: bool = False, extract_mask_coords: bool = False) -> np.ndarray:
+    def predict_oblique_with_coords(self, image_path: str, shoreline_coords: dict, patch_size: tuple = (256, 512), stride: tuple = (128, 256), for_matlab: bool = False, extract_mask_coords: bool = False, landward_pixel_gt: int = 1, seaward_pixel_gt: int = 2, landward_pixel_pred: int = 0, seaward_pixel_pred: int = 1) -> np.ndarray:
         # print(shoreline_coords)
         img = cv2.imread(image_path)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -147,31 +147,45 @@ class ShorelinePredictor:
 
         x_min = 0
         x_max = width - 1
+        
+        threshold_ratio = 0.90
 
-        # for x rows, and remove full white rows
         for x in range(0, x_max):
             col_pixels = img[y_min:y_max + 1, x, :]
-            count = np.count_nonzero(col_pixels == 255)
-            if count >= col_pixels.shape[0]*0.75:
+            
+            is_black = np.all(col_pixels == 0, axis=1)     
+            is_white = np.all(col_pixels == 255, axis=1)
+            
+            count_nodata = np.sum(is_black) + np.sum(is_white)
+            total_pixels = col_pixels.shape[0]
+            
+            if count_nodata >= total_pixels * threshold_ratio:
                 x_min += 1
             else:
-                break
+                break 
 
-        for x in range(x_max, 0, -1):
+        for x in range(width - 1, x_min, -1):
             col_pixels = img[y_min:y_max + 1, x, :]
-            count = np.count_nonzero(col_pixels == 255)
-            if count >= col_pixels.shape[0]*0.75:
+            
+            is_black = np.all(col_pixels == 0, axis=1)
+            is_white = np.all(col_pixels == 255, axis=1)
+            
+            count_nodata = np.sum(is_black) + np.sum(is_white)
+            total_pixels = col_pixels.shape[0]
+
+            if count_nodata >= total_pixels * threshold_ratio:
                 x_max -= 1
             else:
                 break
-                    
+
+        x_max = max(x_max, x_min + 1)
 
         crop_coords = ((y_min, x_min), (y_max, x_max))
 
         mask = np.zeros((height, width), dtype=np.uint8)
         cv2.polylines(mask, [np.array(points, dtype=np.int32)], isClosed=False, color=1, thickness=1)
 
-        pred = self._predict(img, crop_coords, patch_size, stride, landward_pixel_gt=1, seaward_pixel_gt=2, landward_pixel_pred=0, seaward_pixel_pred=1, for_matlab=for_matlab, mask=mask, mask_only_shoreline=True)
+        pred = self._predict(img, crop_coords, patch_size, stride, landward_pixel_gt=landward_pixel_gt, seaward_pixel_gt=seaward_pixel_gt, landward_pixel_pred=landward_pixel_pred, seaward_pixel_pred=seaward_pixel_pred, for_matlab=for_matlab, mask=mask, mask_only_shoreline=True)
 
 
         shoreline_coords = np.column_stack(np.where(mask == 1))

@@ -140,7 +140,7 @@ class CoastData:
 
         return results
     
-    def split_data(self, val_size: float = 0.2, test_size: float = 0.1, random_state: int = 42, get_mask: bool = True, get_coords: bool = False, get_metadata: bool = False):
+    def split_data(self, val_size: float = 0.2, test_size: float = 0.1, random_state: int = 42, get_mask: bool = True, get_coords: bool = False, get_metadata: bool = False, get_original_image_path: bool = False):
         """
         Splits the dataset into training, validation, and test sets based on the specified sizes.
 
@@ -177,7 +177,7 @@ class CoastData:
                 get_mask=get_mask, 
                 get_shoreline_coords=get_coords, 
                 get_all_metadata=get_metadata,
-                get_original_image_path=get_coords
+                get_original_image_path=get_original_image_path
             )
 
             # Shuffle the data
@@ -191,20 +191,20 @@ class CoastData:
             # Training set
             start = 0
             end = int(total * train_size)
-            self._extend_data(data['train'], coast_data[start:end], get_mask, get_coords, get_metadata)
+            self._extend_data(data['train'], coast_data[start:end], get_mask, get_coords, get_metadata, get_original_image_path)
 
             # Validation set
             start = end
             end = int(total * (train_size + val_size))
-            self._extend_data(data['validation'], coast_data[start:end], get_mask, get_coords, get_metadata)
+            self._extend_data(data['validation'], coast_data[start:end], get_mask, get_coords, get_metadata, get_original_image_path)
 
             # Test set
             if test_size > 0:
                 start = end
-                self._extend_data(data['test'], coast_data[start:], get_mask, get_coords, get_metadata)
+                self._extend_data(data['test'], coast_data[start:], get_mask, get_coords, get_metadata, get_original_image_path)
         return data
 
-    def get_kfold_splits(self, k=5, test_size: float = 0.1, random_state=42, get_mask=True, get_coords=False, get_metadata=False):
+    def get_kfold_splits(self, k=5, test_size: float = 0.1, random_state=42, get_mask=True, get_coords=False, get_metadata=False, get_original_image_path=False):
         """
         Crea k splits (train/val) per K-Fold Cross-Validation mantenint el test fix.
         """
@@ -242,7 +242,7 @@ class CoastData:
             # add last images to test set
             if test_size > 0:
                 start = int(total * (1 - test_size))
-                self._extend_data(data['test'], coast_data[start:], get_mask, get_coords, get_metadata)
+                self._extend_data(data['test'], coast_data[start:], get_mask, get_coords, get_metadata, get_original_image_path)
                 coast_data = coast_data[:start]
 
             total_folds = int(total * (1 - test_size))
@@ -251,7 +251,7 @@ class CoastData:
             for fold in range(k):
                 start = fold * fold_size
                 end = start + fold_size if fold != k - 1 else total_folds
-                self._extend_data(data[f'fold_{fold}'], coast_data[start:end], get_mask, get_coords, get_metadata)
+                self._extend_data(data[f'fold_{fold}'], coast_data[start:end], get_mask, get_coords, get_metadata, get_original_image_path)
 
         new_folds = {}
         for fold in range(k):
@@ -281,10 +281,11 @@ class CoastData:
             'metadata': [] if get_metadata else None
         }
     
-    def _extend_data(self, data_dict, chunk, get_mask, get_coords, get_metadata):
+    def _extend_data(self, data_dict, chunk, get_mask, get_coords, get_metadata, get_original_image_path):
         data_dict['images'].extend([entry['image'] for entry in chunk])
         if get_coords:
             data_dict['masks'].extend([entry['shoreline_coords'] for entry in chunk])
+        if get_original_image_path:
             data_dict['original_image_paths'].extend([entry['original_image_path'] for entry in chunk])
         if get_mask:
             data_dict['masks'].extend([entry['mask'] for entry in chunk])
