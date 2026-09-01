@@ -1,25 +1,25 @@
 import json
-import random
 import os
-import numpy as np
-
-from sklearn.model_selection import StratifiedKFold
-import numpy as np
 import random
 
-from collections import defaultdict
 
 class CoastData:
     """
     Dataset class for coastal images and metadata. Designed for SCLabels dataset.
     """
 
-    def __init__(self, data_path: str, name: str = "global", metadata_name: str = "metadata.json", verbose: bool = True):
+    def __init__(
+        self,
+        data_path: str,
+        name: str = "global",
+        metadata_name: str = "metadata.json",
+        verbose: bool = True,
+    ):
         """
         Initializes the CoastData object.
 
         Parameters:
-        data_path (str): The path to the directory where the data is stored. This is the base path used to locate the metadata file and image data. 
+        data_path (str): The path to the directory where the data is stored. This is the base path used to locate the metadata file and image data.
         name (str): The name of the dataset or a specific subset of it. It can be a global dataset or a specific coastal site. Default: global
         metadata_name (str): The name of the metadata file containing information about the images. This file includes details such as the location, conditions, and other relevant metadata for each image. Default: metadata.json
         verbose (bool): If True, prints information about the dataset. Default: True
@@ -36,11 +36,15 @@ class CoastData:
 
         # Filter the metadata based on the name
         # self.global_data = False
-        if 'global' in name:
+        if "global" in name:
             self.metadata = full_metadata
             # self.global_data = True
         else:
-            self.metadata = [entry for entry in full_metadata if entry['image']['site']['CSname'] in name]
+            self.metadata = [
+                entry
+                for entry in full_metadata
+                if self._get_site_name(entry["image"]["site"]) in name
+            ]
 
         # Set the data path
         self.data_path = data_path
@@ -53,7 +57,7 @@ class CoastData:
         Returns the number of images in the dataset.
         """
         return len(self.metadata)
-    
+
     def __getitem__(self, idx: int):
         """
         Returns the metadata for a specific image index in the dataset.
@@ -65,8 +69,10 @@ class CoastData:
         dict: The metadata for the image at the specified index.
         """
         return self.metadata[idx]
-    
-    def _get_metadata(self, data_path: str, metadata_name: str = "metadata.json"):
+
+    def _get_metadata(
+        self, data_path: str, metadata_name: str = "metadata.json"
+    ):
         """
         Loads the metadata from the specified file.
 
@@ -84,18 +90,46 @@ class CoastData:
                 metadata = json.load(fp)
             return metadata
         except FileNotFoundError:
-            raise FileNotFoundError(f"Metadata file {metadata_name} not found in {data_path}.")
+            raise FileNotFoundError(
+                f"Metadata file {metadata_name} not found in {data_path}."
+            )
         except json.JSONDecodeError:
             raise ValueError(f"Failed to decode JSON from {metadata_name}.")
-    
+
+    def _get_site_name(self, site_info):
+        """
+        Returns the name of the coastal site from the site information dictionary.
+
+        Parameters:
+        site_info (dict): A dictionary containing information about the coastal site.
+
+        Returns:
+        str: The name of the coastal site.
+        """
+
+        return site_info.get("name", site_info.get("CSname", ""))
+
     def get_station_names(self):
         """
         Returns a sorted list of the coastal site names in the dataset.
         """
 
-        return sorted(list(set([entry['image']['site']['CSname'] for entry in self.metadata])))
+        return sorted(
+            {
+                self._get_site_name(entry["image"]["site"])
+                for entry in self.metadata
+            }
+        )
 
-    def get_images(self, station_name: str = None, get_mask: bool = True, get_shoreline_coords: bool = False, get_all_metadata: bool = False, get_filename: bool = False, get_original_image_path: bool = False):
+    def get_images(
+        self,
+        station_name: str = None,
+        get_mask: bool = True,
+        get_shoreline_coords: bool = False,
+        get_all_metadata: bool = False,
+        get_filename: bool = False,
+        get_original_image_path: bool = False,
+    ):
         """
         Returns a list of image filenames for the specified coastal station or the entire dataset. Optionally includes masks, shoreline coordinates, original image paths, and all metadata.
 
@@ -110,37 +144,55 @@ class CoastData:
         Returns:
         list: A list of image full paths.
         """
-        if station_name is None or station_name == 'global':
+        if station_name is None or station_name == "global":
             entries_to_process = self.metadata
         else:
             entries_to_process = [
-                entry for entry in self.metadata 
-                if entry['image']['site']['CSname'] == station_name
+                entry
+                for entry in self.metadata
+                if self._get_site_name(entry["image"]["site"]) == station_name
             ]
 
         results = []
         for entry in entries_to_process:
-            image_data = entry['image']
-        
+            image_data = entry["image"]
+
             item = {
-                'image': os.path.join(self.data_path, "images", image_data['filename'])
+                "image": os.path.join(
+                    self.data_path, "images", image_data["filename"]
+                )
             }
             if get_mask:
-                item['mask'] = os.path.join(self.data_path, "masks", image_data['mask']['filename'])
+                item["mask"] = os.path.join(
+                    self.data_path, "masks", image_data["mask"]["filename"]
+                )
             if get_shoreline_coords:
-                item['shoreline_coords'] = image_data['shoreline']['coordinates']
+                item["shoreline_coords"] = image_data["shoreline"][
+                    "coordinates"
+                ]
             if get_original_image_path:
-                item['original_image_path'] = os.path.basename(image_data['oblique_path'])
+                item["original_image_path"] = os.path.basename(
+                    image_data["oblique_path"]
+                )
             if get_filename:
-                item['filename'] = image_data['filename']
+                item["filename"] = image_data["filename"]
             if get_all_metadata:
-                item['metadata'] = entry
-            
+                item["metadata"] = entry
+
             results.append(item)
 
         return results
-    
-    def split_data(self, val_size: float = 0.2, test_size: float = 0.1, random_state: int = 42, get_mask: bool = True, get_coords: bool = False, get_metadata: bool = False, get_original_image_path: bool = False):
+
+    def split_data(
+        self,
+        val_size: float = 0.2,
+        test_size: float = 0.1,
+        random_state: int = 42,
+        get_mask: bool = True,
+        get_coords: bool = False,
+        get_metadata: bool = False,
+        get_original_image_path: bool = False,
+    ):
         """
         Splits the dataset into training, validation, and test sets based on the specified sizes.
 
@@ -161,9 +213,9 @@ class CoastData:
 
         # Initialize the lists for the training, validation, and test sets
         data = {
-            'train': self._init_empty_dict(get_coords, get_metadata),
-            'validation': self._init_empty_dict(get_coords, get_metadata),
-            'test': self._init_empty_dict(get_coords, get_metadata)
+            "train": self._init_empty_dict(get_coords, get_metadata),
+            "validation": self._init_empty_dict(get_coords, get_metadata),
+            "test": self._init_empty_dict(get_coords, get_metadata),
         }
 
         # Calculate the size of the training set
@@ -171,13 +223,12 @@ class CoastData:
 
         # Shuffle the data for each coastal site
         for station_name in station_names:
-
             coast_data = self.get_images(
-                station_name=station_name, 
-                get_mask=get_mask, 
-                get_shoreline_coords=get_coords, 
+                station_name=station_name,
+                get_mask=get_mask,
+                get_shoreline_coords=get_coords,
                 get_all_metadata=get_metadata,
-                get_original_image_path=get_original_image_path
+                get_original_image_path=get_original_image_path,
             )
 
             # Shuffle the data
@@ -191,20 +242,50 @@ class CoastData:
             # Training set
             start = 0
             end = int(total * train_size)
-            self._extend_data(data['train'], coast_data[start:end], get_mask, get_coords, get_metadata, get_original_image_path)
+            self._extend_data(
+                data["train"],
+                coast_data[start:end],
+                get_mask,
+                get_coords,
+                get_metadata,
+                get_original_image_path,
+            )
 
             # Validation set
             start = end
             end = int(total * (train_size + val_size))
-            self._extend_data(data['validation'], coast_data[start:end], get_mask, get_coords, get_metadata, get_original_image_path)
+            self._extend_data(
+                data["validation"],
+                coast_data[start:end],
+                get_mask,
+                get_coords,
+                get_metadata,
+                get_original_image_path,
+            )
 
             # Test set
             if test_size > 0:
                 start = end
-                self._extend_data(data['test'], coast_data[start:], get_mask, get_coords, get_metadata, get_original_image_path)
+                self._extend_data(
+                    data["test"],
+                    coast_data[start:],
+                    get_mask,
+                    get_coords,
+                    get_metadata,
+                    get_original_image_path,
+                )
         return data
 
-    def get_kfold_splits(self, k=5, test_size: float = 0.1, random_state=42, get_mask=True, get_coords=False, get_metadata=False, get_original_image_path=False):
+    def get_kfold_splits(
+        self,
+        k=5,
+        test_size: float = 0.1,
+        random_state=42,
+        get_mask=True,
+        get_coords=False,
+        get_metadata=False,
+        get_original_image_path=False,
+    ):
         """
         Crea k splits (train/val) per K-Fold Cross-Validation mantenint el test fix.
         """
@@ -215,12 +296,12 @@ class CoastData:
         station_names = self.get_station_names()
 
         # Initialize the lists for the training, validation, and test sets
-        data = {
-            'test': self._init_empty_dict(get_coords, get_metadata)
-        }
+        data = {"test": self._init_empty_dict(get_coords, get_metadata)}
 
         for fold in range(k):
-            data[f'fold_{fold}'] = self._init_empty_dict(get_coords, get_metadata)
+            data[f"fold_{fold}"] = self._init_empty_dict(
+                get_coords, get_metadata
+            )
 
         # Shuffle the data for each coastal site
         for station_name in station_names:
@@ -229,12 +310,12 @@ class CoastData:
                 get_mask=get_mask,
                 get_shoreline_coords=get_coords,
                 get_all_metadata=get_metadata,
-                get_original_image_path=get_coords
+                get_original_image_path=get_coords,
             )
 
             # Shuffle the data
             random.shuffle(coast_data)
-            
+
             # Calculate the total number of images
             total = len(coast_data)
             print(f"Coast: {station_name}, Total size: {len(coast_data)}")
@@ -242,7 +323,14 @@ class CoastData:
             # add last images to test set
             if test_size > 0:
                 start = int(total * (1 - test_size))
-                self._extend_data(data['test'], coast_data[start:], get_mask, get_coords, get_metadata, get_original_image_path)
+                self._extend_data(
+                    data["test"],
+                    coast_data[start:],
+                    get_mask,
+                    get_coords,
+                    get_metadata,
+                    get_original_image_path,
+                )
                 coast_data = coast_data[:start]
 
             total_folds = int(total * (1 - test_size))
@@ -251,43 +339,64 @@ class CoastData:
             for fold in range(k):
                 start = fold * fold_size
                 end = start + fold_size if fold != k - 1 else total_folds
-                self._extend_data(data[f'fold_{fold}'], coast_data[start:end], get_mask, get_coords, get_metadata, get_original_image_path)
+                self._extend_data(
+                    data[f"fold_{fold}"],
+                    coast_data[start:end],
+                    get_mask,
+                    get_coords,
+                    get_metadata,
+                    get_original_image_path,
+                )
 
         new_folds = {}
         for fold in range(k):
-            new_folds[f'fold_{fold}'] = {
-                'train': self._init_empty_dict(get_coords, get_metadata),
-                'validation': data[f'fold_{fold}'],
-                'test': data['test']
+            new_folds[f"fold_{fold}"] = {
+                "train": self._init_empty_dict(get_coords, get_metadata),
+                "validation": data[f"fold_{fold}"],
+                "test": data["test"],
             }
 
             for other_fold in range(k):
                 if other_fold == fold:
                     continue
-                for key, values in data[f'fold_{other_fold}'].items():
+                for key, values in data[f"fold_{other_fold}"].items():
                     if values is None:
                         continue
-                    if new_folds[f'fold_{fold}']['train'][key] is None:
-                        new_folds[f'fold_{fold}']['train'][key] = []
-                    new_folds[f'fold_{fold}']['train'][key].extend(values)
+                    if new_folds[f"fold_{fold}"]["train"][key] is None:
+                        new_folds[f"fold_{fold}"]["train"][key] = []
+                    new_folds[f"fold_{fold}"]["train"][key].extend(values)
 
         return new_folds
 
     def _init_empty_dict(self, get_coords: bool, get_metadata: bool):
         return {
-            'images': [],
-            'masks': [],
-            'original_image_paths': [] if get_coords else None,
-            'metadata': [] if get_metadata else None
+            "images": [],
+            "masks": [],
+            "original_image_paths": [] if get_coords else None,
+            "metadata": [] if get_metadata else None,
         }
-    
-    def _extend_data(self, data_dict, chunk, get_mask, get_coords, get_metadata, get_original_image_path):
-        data_dict['images'].extend([entry['image'] for entry in chunk])
+
+    def _extend_data(
+        self,
+        data_dict,
+        chunk,
+        get_mask,
+        get_coords,
+        get_metadata,
+        get_original_image_path,
+    ):
+        data_dict["images"].extend([entry["image"] for entry in chunk])
         if get_coords:
-            data_dict['masks'].extend([entry['shoreline_coords'] for entry in chunk])
+            data_dict["masks"].extend(
+                [entry["shoreline_coords"] for entry in chunk]
+            )
         if get_original_image_path:
-            data_dict['original_image_paths'].extend([entry['original_image_path'] for entry in chunk])
+            data_dict["original_image_paths"].extend(
+                [entry["original_image_path"] for entry in chunk]
+            )
         if get_mask:
-            data_dict['masks'].extend([entry['mask'] for entry in chunk])
+            data_dict["masks"].extend([entry["mask"] for entry in chunk])
         if get_metadata:
-            data_dict['metadata'].extend([entry['metadata'] for entry in chunk])
+            data_dict["metadata"].extend(
+                [entry["metadata"] for entry in chunk]
+            )
