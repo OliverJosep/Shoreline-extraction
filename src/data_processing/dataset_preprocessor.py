@@ -282,7 +282,8 @@ class DatasetPreprocessor:
         type_class: int = 255,
         background_class: int = 0,
         not_classified_class: int = 25,
-        mask_mapping: dict = None,
+        mask_mapping: dict | None = None,
+        land_side="L",
     ) -> tuple[np.array, np.array]:
         """
         Processes the image and mask.
@@ -297,6 +298,23 @@ class DatasetPreprocessor:
         Returns:
         Tuple[np.array, np.array]: The new image and mask.
         """
+        # Determine rotations to make the shoreline vertical (Left side base case)
+        if land_side == "L":
+            k = 0
+        elif land_side == "T":
+            k = 1  # 90 deg counter-clockwise
+        elif land_side == "R":
+            k = 2  # 180 deg
+        elif land_side == "B":
+            k = 3  # 270 deg counter-clockwise
+        else:
+            raise ValueError("land_side must be 'L', 'R', 'T', or 'B'.")
+
+        # Rotate to base case "L"
+        if k > 0:
+            img = np.rot90(img, k=k)
+            mask = np.rot90(mask, k=k)
+
         img, mask = self.get_rows_that_no_contains_class(
             img, mask, type_class=not_classified_class
         )  # 25 is the class for the not classified pixels
@@ -316,6 +334,10 @@ class DatasetPreprocessor:
         mask = self.mask_mapping(
             mask, mask_mapping
         )  # 25 is the class for the not classified pixels
+
+        if k > 0:
+            img = np.rot90(img, k=(4 - k))
+            mask = np.rot90(mask, k=(4 - k))
 
         return img, mask
 
@@ -443,25 +465,16 @@ class DatasetPreprocessor:
 
     def preprocess_from_metadata(
         self,
-        metadata: list,
         dataset_path: str,
         dataset_output_path: str,
         mask_mapping: dict = None,
+        oblique: bool = False,
     ) -> None:
         """
-        Preprocesses the dataset using the metadata provided.
-
-        Parameters:
-        metadata (list): A list of dictionaries containing the metadata for each image and mask.
-                        Each dictionary should contain the keys 'image_path' and 'mask_path'.
-        dataset_path (str): The path to the dataset.
-        dataset_output_path (str): The path to save the preprocessed dataset.
-        mask_mapping (dict): The mapping of the classes. The key is the old class and the value is the new class. Default: None
-
-        Returns:
-        None
+        Preprocesses the dataset located at the given path.
+        Extracts 'land_side' from metadata.json for each image and copies the metadata to the output.
+        No dataset splitting is applied.
         """
-
         # Remove the output directory if it already exists
         if os.path.exists(dataset_output_path):
             shutil.rmtree(dataset_output_path)
@@ -472,34 +485,64 @@ class DatasetPreprocessor:
         os.makedirs(output_images_path, exist_ok=True)
         os.makedirs(output_masks_path, exist_ok=True)
 
-        # Copy the metadata file, firts we need to create the metadata file
+        # Parse metadata.json to map filenames to land_side and copy it to the output folder
+        metadata_path = os.path.join(dataset_path, "metadata.json")
         metadata_output_path = os.path.join(
             dataset_output_path, "metadata.json"
         )
-        with open(metadata_output_path, "w") as f:
-            json.dump(metadata, f)
 
-        for i, (image_path, mask_path) in enumerate(dataset_path):
-            image = self.load_image(dataset_path[i][image_path])
-            mask = self.load_mask(dataset_path[i][mask_path])
+        land_side_map = {}
+        if os.path.exists(metadata_path):
+            # Copy the metadata file directly to output
+            shutil.copy(metadata_path, metadata_output_path)
 
-            image, mask = self.process_image(
-                image, mask, mask_mapping=mask_mapping
-            )
+            # Read to extract land_side
+            with open(metadata_path, "r") as f:
+                metadata_json = json.load(f)
+                for item in metadata_json:
+                    try:
+                        # Adapta aquesta ruta segons l'estructura exacta del teu JSON
+                        img_filename = item["image"]["filename"]
+                        l_side = item["image"]["site"]["landSide"]
+                        land_side_map[img_filename] = l_side
+                    except KeyError:
+                        continue
 
-            image_path_output = os.path.join(
-                output_images_path,
-                os.path.basename(dataset_path[i][image_path]),
-            )
-            mask_path_output = os.path.join(
-                output_masks_path, os.path.basename(dataset_path[i][mask_path])
-            )
+        image_folder_paths = sorted(
+            os.listdir(os.path.join(dataset_path, "images"))
+        )
+        mask_folder_paths = sorted(
+            os.listdir(os.path.join(dataset_path, "masks"))
+        )
 
-            output_image_path = os.path.join(
-                output_images_path, image_path_output
-            )
-            output_mask_path = os.path.join(
-                output_masks_path, mask_path_output
-            )
+        for image_file, mask_file in zip(
+            image_folder_paths, mask_folder_paths
+        ):
+            image_path = os.path.join(dataset_path, "images", image_file)
+            mask_path = os.path.join(dataset_path, "masks", mask_file)
+
+            image = self.load_image(image_path)
+            mask = self.load_mask(mask_path)
+
+            # Get land_side from the JSON map, default to "L" if not found
+            land_side = land_side_map.get(image_file, "L")
+
+            if oblique:
+                image, mask = self.process_image_oblique(
+                    image, mask, mask_mapping=mask_mapping
+                )
+            else:
+                image, mask = self.process_image(
+                    image,
+                    mask,
+                    mask_mapping=mask_mapping,
+                    background_class=255,
+                    not_classified_class=25,
+                    land_side=land_side,
+                )
+
+            output_image_path = os.path.join(output_images_path, image_file)
+            output_mask_path = os.path.join(output_masks_path, mask_file)
+
             cv2.imwrite(output_image_path, image)
             cv2.imwrite(output_mask_path, mask)

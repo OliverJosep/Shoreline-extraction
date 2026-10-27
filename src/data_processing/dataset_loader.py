@@ -129,6 +129,7 @@ class CoastData:
         get_all_metadata: bool = False,
         get_filename: bool = False,
         get_original_image_path: bool = False,
+        get_land_side: bool = False,
     ):
         """
         Returns a list of image filenames for the specified coastal station or the entire dataset. Optionally includes masks, shoreline coordinates, original image paths, and all metadata.
@@ -178,6 +179,8 @@ class CoastData:
                 item["filename"] = image_data["filename"]
             if get_all_metadata:
                 item["metadata"] = entry
+            if get_land_side:
+                item["land_side"] = image_data["site"]["landSide"]
 
             results.append(item)
 
@@ -191,6 +194,7 @@ class CoastData:
         get_mask: bool = True,
         get_coords: bool = False,
         get_metadata: bool = False,
+        get_land_side: bool = False,
         get_original_image_path: bool = False,
     ):
         """
@@ -213,9 +217,24 @@ class CoastData:
 
         # Initialize the lists for the training, validation, and test sets
         data = {
-            "train": self._init_empty_dict(get_coords, get_metadata),
-            "validation": self._init_empty_dict(get_coords, get_metadata),
-            "test": self._init_empty_dict(get_coords, get_metadata),
+            "train": self._init_empty_dict(
+                get_coords,
+                get_metadata,
+                get_land_side,
+                get_original_image_path,
+            ),
+            "validation": self._init_empty_dict(
+                get_coords,
+                get_metadata,
+                get_land_side,
+                get_original_image_path,
+            ),
+            "test": self._init_empty_dict(
+                get_coords,
+                get_metadata,
+                get_land_side,
+                get_original_image_path,
+            ),
         }
 
         # Calculate the size of the training set
@@ -229,6 +248,7 @@ class CoastData:
                 get_shoreline_coords=get_coords,
                 get_all_metadata=get_metadata,
                 get_original_image_path=get_original_image_path,
+                get_land_side=get_land_side,
             )
 
             # Shuffle the data
@@ -236,8 +256,6 @@ class CoastData:
 
             # Calculate the total number of images
             total = len(coast_data)
-
-            print(f"Coast: {station_name}, Total size: {len(coast_data)}")
 
             # Training set
             start = 0
@@ -249,7 +267,9 @@ class CoastData:
                 get_coords,
                 get_metadata,
                 get_original_image_path,
+                get_land_side,
             )
+            total_station_train = end
 
             # Validation set
             start = end
@@ -261,7 +281,9 @@ class CoastData:
                 get_coords,
                 get_metadata,
                 get_original_image_path,
+                get_land_side,
             )
+            total_station_val = end - total_station_train
 
             # Test set
             if test_size > 0:
@@ -273,7 +295,13 @@ class CoastData:
                     get_coords,
                     get_metadata,
                     get_original_image_path,
+                    get_land_side,
                 )
+                total_station_test = total - end
+
+            print(
+                f"Station: {station_name}, Total size: {len(coast_data)}, Train: {total_station_train}, Val: {total_station_val}, Test: {total_station_test}"
+            )
         return data
 
     def get_kfold_splits(
@@ -318,7 +346,7 @@ class CoastData:
 
             # Calculate the total number of images
             total = len(coast_data)
-            print(f"Coast: {station_name}, Total size: {len(coast_data)}")
+            print(f"Station: {station_name}, Total size: {len(coast_data)}")
 
             # add last images to test set
             if test_size > 0:
@@ -368,12 +396,19 @@ class CoastData:
 
         return new_folds
 
-    def _init_empty_dict(self, get_coords: bool, get_metadata: bool):
+    def _init_empty_dict(
+        self,
+        get_coords: bool = False,
+        get_metadata: bool = False,
+        get_land_side: bool = False,
+        get_original_image_path: bool = False,
+    ):
         return {
             "images": [],
             "masks": [],
-            "original_image_paths": [] if get_coords else None,
+            "original_image_paths": [] if get_original_image_path else None,
             "metadata": [] if get_metadata else None,
+            "land_side": [] if get_land_side else None,
         }
 
     def _extend_data(
@@ -384,6 +419,7 @@ class CoastData:
         get_coords,
         get_metadata,
         get_original_image_path,
+        get_land_side,
     ):
         data_dict["images"].extend([entry["image"] for entry in chunk])
         if get_coords:
@@ -399,4 +435,8 @@ class CoastData:
         if get_metadata:
             data_dict["metadata"].extend(
                 [entry["metadata"] for entry in chunk]
+            )
+        if get_land_side:
+            data_dict["land_side"].extend(
+                [entry["land_side"] for entry in chunk]
             )
