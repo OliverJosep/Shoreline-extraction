@@ -218,22 +218,22 @@ class CoastData:
         # Initialize the lists for the training, validation, and test sets
         data = {
             "train": self._init_empty_dict(
-                get_coords,
-                get_metadata,
-                get_land_side,
-                get_original_image_path,
+                get_coords=get_coords,
+                get_metadata=get_metadata,
+                get_land_side=get_land_side,
+                get_original_image_path=get_original_image_path,
             ),
             "validation": self._init_empty_dict(
-                get_coords,
-                get_metadata,
-                get_land_side,
-                get_original_image_path,
+                get_coords=get_coords,
+                get_metadata=get_metadata,
+                get_land_side=get_land_side,
+                get_original_image_path=get_original_image_path,
             ),
             "test": self._init_empty_dict(
-                get_coords,
-                get_metadata,
-                get_land_side,
-                get_original_image_path,
+                get_coords=get_coords,
+                get_metadata=get_metadata,
+                get_land_side=get_land_side,
+                get_original_image_path=get_original_image_path,
             ),
         }
 
@@ -261,13 +261,13 @@ class CoastData:
             start = 0
             end = int(total * train_size)
             self._extend_data(
-                data["train"],
-                coast_data[start:end],
-                get_mask,
-                get_coords,
-                get_metadata,
-                get_original_image_path,
-                get_land_side,
+                data_dict=data["train"],
+                chunk=coast_data[start:end],
+                get_mask=get_mask,
+                get_coords=get_coords,
+                get_metadata=get_metadata,
+                get_original_image_path=get_original_image_path,
+                get_land_side=get_land_side,
             )
             total_station_train = end
 
@@ -275,13 +275,13 @@ class CoastData:
             start = end
             end = int(total * (train_size + val_size))
             self._extend_data(
-                data["validation"],
-                coast_data[start:end],
-                get_mask,
-                get_coords,
-                get_metadata,
-                get_original_image_path,
-                get_land_side,
+                data_dict=data["validation"],
+                chunk=coast_data[start:end],
+                get_mask=get_mask,
+                get_coords=get_coords,
+                get_metadata=get_metadata,
+                get_original_image_path=get_original_image_path,
+                get_land_side=get_land_side,
             )
             total_station_val = end - total_station_train
 
@@ -289,13 +289,13 @@ class CoastData:
             if test_size > 0:
                 start = end
                 self._extend_data(
-                    data["test"],
-                    coast_data[start:],
-                    get_mask,
-                    get_coords,
-                    get_metadata,
-                    get_original_image_path,
-                    get_land_side,
+                    data_dict=data["test"],
+                    chunk=coast_data[start:],
+                    get_mask=get_mask,
+                    get_coords=get_coords,
+                    get_metadata=get_metadata,
+                    get_original_image_path=get_original_image_path,
+                    get_land_side=get_land_side,
                 )
                 total_station_test = total - end
 
@@ -406,6 +406,7 @@ class CoastData:
         return {
             "images": [],
             "masks": [],
+            "shoreline_coords": [] if get_coords else None,
             "original_image_paths": [] if get_original_image_path else None,
             "metadata": [] if get_metadata else None,
             "land_side": [] if get_land_side else None,
@@ -423,14 +424,17 @@ class CoastData:
     ):
         data_dict["images"].extend([entry["image"] for entry in chunk])
         if get_coords:
-            data_dict["masks"].extend(
-                [entry["shoreline_coords"] for entry in chunk]
-            )
+            if get_mask:
+                data_dict["masks"].extend([entry["mask"] for entry in chunk])
+            else:
+                data_dict["masks"].extend(
+                    [entry["shoreline_coords"] for entry in chunk]
+                )
         if get_original_image_path:
             data_dict["original_image_paths"].extend(
                 [entry["original_image_path"] for entry in chunk]
             )
-        if get_mask:
+        if get_mask and not get_coords:
             data_dict["masks"].extend([entry["mask"] for entry in chunk])
         if get_metadata:
             data_dict["metadata"].extend(
