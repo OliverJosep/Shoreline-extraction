@@ -1,70 +1,104 @@
-import sys
 import os
+import sys
 
 # run this script from the ./Shoreline-extraction directory to avoid import errors
 sys.path.append(os.getcwd())
 
-from models.deeplab.deeplab import DeepLabV3
-from models.cnn_model import CNNModel
-
-from src.models.data_management.cnn_formes import CNNFormes
-from src.data_processing.dataset_loader import CoastData
-from src.data_processing.patchify import Patchify
-
-import torch
 import gc
 
-MLFLOW_EXPERIMENT_NAME = "experiment_name"
+import torch
+
+from models.deeplab.deeplab import DeepLabV3
+from src.data_processing.dataset_loader import CoastData
+from src.data_processing.patchify import Patchify
+from src.models.data_management.cnn_formes import CNNFormes
+
+MLFLOW_EXPERIMENT_NAME = "UNSW_DeepLabV3_oblique"
+
 
 def generate_patches(data, output_dir, patch_size, stride):
     patchify = Patchify(patch_size, stride)
-    patchify.extract_patches_and_save(data, output_dir, skip_no_shoreline=True, binary_class=True, p_keep_negative=1, padding_mode='reflect')
-    
+    patchify.extract_patches_and_save(
+        data,
+        output_dir,
+        skip_no_shoreline=True,
+        binary_class=True,
+        p_keep_negative=1,
+        padding_mode="reflect",
+    )
+
+
 def main():
-    data_path = os.path.abspath(os.path.join(os.getcwd(), "data/processed/"))
+    data_path = os.path.abspath(
+        os.path.join(os.getcwd(), "data/processed_UNSW_oblique/")
+    )
     num_classes = 3
 
     # Load data
     print(f"Loading data from {data_path}...")
-    data = CoastData(data_path, name="samarador")
-    filtered_data = data.get_images() 
+    data = CoastData(data_path, name="global")
+    filtered_data = data.get_images()
     print("Data loaded successfully.")
-    print(f"Splitting data into training, validation and test.")
+    print("Splitting data into training, validation and test.")
     filtered_data = data.split_data()
     print("Data split successfully.")
 
     # Generate output directory for patches
     artifact_path = os.path.abspath(os.path.join(os.getcwd(), "artifacts/"))
-    output_dir = os.path.join(artifact_path, MLFLOW_EXPERIMENT_NAME, "patches")
+    output_dir = os.path.join("data", MLFLOW_EXPERIMENT_NAME, "patches")
     print(f"Output directory for patches: {output_dir}")
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     # Define patch size and stride
-    patch_size = (256, 256)
+    patch_size = (512, 512)
     stride = (256, 256)
-    print(f"Generating patches with patch size {patch_size} and stride {stride}...")
-    generate_patches(filtered_data, output_dir, patch_size, stride)
-    print("Patches generated successfully.")
+    if not os.path.exists(output_dir) or len(os.listdir(output_dir)) == 0:
+        print(
+            f"Generating patches with patch size {patch_size} and stride {stride}..."
+        )
+        generate_patches(filtered_data, output_dir, patch_size, stride)
+        print("Patches generated successfully.")
+    else:
+        print("Patches already exist. Skipping patch generation.")
 
     # Training the model
-    print(f"\n{'='*30}\nStarting training for DeepLabV3\n{'='*30}")
-    
-    model = DeepLabV3(num_classes=num_classes, experiment_name=MLFLOW_EXPERIMENT_NAME, use_mlflow=True)
-    model.load_data(output_dir, CNNFormes, batch_size=24, resize_shape=patch_size)
+    print(f"\n{'=' * 30}\nStarting training for DeepLabV3\n{'=' * 30}")
+
+    model = DeepLabV3(
+        num_classes=num_classes,
+        experiment_name=MLFLOW_EXPERIMENT_NAME,
+        use_mlflow=True,
+    )
+    model.load_data(
+        output_dir,
+        CNNFormes,
+        batch_size=4,
+        resize_shape=patch_size,
+        drop_last=True,
+    )
     print("Data loaded into model successfully.")
     print("Starting training...")
 
     run_name = f"DeepLabV3_{patch_size[0]}x{patch_size[1]}"
-    description = f"Training DeepLabV3 with patch size {patch_size} and stride {stride}"
+    description = (
+        f"Training DeepLabV3 with patch size {patch_size} and stride {stride}"
+    )
 
     early_stop = 10
-    model.train(epochs=100, artifact_path=artifact_path, run_name=run_name, run_description=description, early_stopping=early_stop)
+    model.train(
+        epochs=150,
+        artifact_path=artifact_path,
+        run_name=run_name,
+        run_description=description,
+        early_stopping=early_stop,
+    )
     print("Training completed successfully.")
 
     del model
     gc.collect()
     torch.cuda.empty_cache()
+
 
 if __name__ == "__main__":
     main()

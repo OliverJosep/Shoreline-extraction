@@ -243,8 +243,8 @@ class ShorelinePredictor:
         seaward_pixel_gt: int = 2,
         landward_pixel_pred: int = 0,
         seaward_pixel_pred: int = 1,
-    ) -> np.ndarray:
-        # print(shoreline_coords)
+        land_side: str = "L",
+    ) -> dict:
         img = cv2.imread(image_path)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
@@ -254,46 +254,94 @@ class ShorelinePredictor:
         points = []
         for u, v in zip(shoreline_coords["u"], shoreline_coords["v"]):
             points.append((int(u), int(v)))
-            # points.append((int(u), height - int(v)))
-
-        ys = [p[1] for p in points]
-        y_min = max(min(ys), 0)
-        y_max = min(max(ys), height - 1)
-
-        x_min = 0
-        x_max = width - 1
 
         threshold_ratio = 0.90
 
-        for x in range(x_max):
-            col_pixels = img[y_min : y_max + 1, x, :]
+        if land_side in ["L", "R"]:
+            # --- Vertical shoreline logic ---
+            # Bounding box limits for the Y axis
+            ys = [p[1] for p in points]
+            y_min = max(min(ys), 0)
+            y_max = min(max(ys), height - 1)
 
-            is_black = np.all(col_pixels == 0, axis=1)
-            is_white = np.all(col_pixels == 255, axis=1)
+            x_min = 0
+            x_max = width - 1
 
-            count_nodata = np.sum(is_black) + np.sum(is_white)
-            total_pixels = col_pixels.shape[0]
+            # Left to right scan
+            for x in range(x_max):
+                col_pixels = img[y_min : y_max + 1, x, :]
 
-            if count_nodata >= total_pixels * threshold_ratio:
-                x_min += 1
-            else:
-                break
+                is_black = np.all(col_pixels == 0, axis=1)
+                is_white = np.all(col_pixels == 255, axis=1)
 
-        for x in range(width - 1, x_min, -1):
-            col_pixels = img[y_min : y_max + 1, x, :]
+                count_nodata = np.sum(is_black) + np.sum(is_white)
+                total_pixels = col_pixels.shape[0]
 
-            is_black = np.all(col_pixels == 0, axis=1)
-            is_white = np.all(col_pixels == 255, axis=1)
+                if count_nodata >= total_pixels * threshold_ratio:
+                    x_min += 1
+                else:
+                    break
 
-            count_nodata = np.sum(is_black) + np.sum(is_white)
-            total_pixels = col_pixels.shape[0]
+            # Right to left scan
+            for x in range(width - 1, x_min, -1):
+                col_pixels = img[y_min : y_max + 1, x, :]
 
-            if count_nodata >= total_pixels * threshold_ratio:
-                x_max -= 1
-            else:
-                break
+                is_black = np.all(col_pixels == 0, axis=1)
+                is_white = np.all(col_pixels == 255, axis=1)
 
-        x_max = max(x_max, x_min + 1)
+                count_nodata = np.sum(is_black) + np.sum(is_white)
+                total_pixels = col_pixels.shape[0]
+
+                if count_nodata >= total_pixels * threshold_ratio:
+                    x_max -= 1
+                else:
+                    break
+
+            x_max = max(x_max, x_min + 1)
+
+        elif land_side in ["T", "B"]:
+            # --- Horizontal shoreline logic ---
+            # Bounding box limits for the X axis
+            xs = [p[0] for p in points]
+            x_min = max(min(xs), 0)
+            x_max = min(max(xs), width - 1)
+
+            y_min = 0
+            y_max = height - 1
+
+            # Top to bottom scan
+            for y in range(y_max):
+                row_pixels = img[y, x_min : x_max + 1, :]
+
+                is_black = np.all(row_pixels == 0, axis=1)
+                is_white = np.all(row_pixels == 255, axis=1)
+
+                count_nodata = np.sum(is_black) + np.sum(is_white)
+                total_pixels = row_pixels.shape[0]
+
+                if count_nodata >= total_pixels * threshold_ratio:
+                    y_min += 1
+                else:
+                    break
+
+            # Bottom to top scan
+            for y in range(height - 1, y_min, -1):
+                row_pixels = img[y, x_min : x_max + 1, :]
+
+                is_black = np.all(row_pixels == 0, axis=1)
+                is_white = np.all(row_pixels == 255, axis=1)
+
+                count_nodata = np.sum(is_black) + np.sum(is_white)
+                total_pixels = row_pixels.shape[0]
+
+                if count_nodata >= total_pixels * threshold_ratio:
+                    y_max -= 1
+                else:
+                    break
+
+            y_max = max(y_max, y_min + 1)
+        else:
+            raise ValueError("land_side must be 'L', 'R', 'T', or 'B'")
 
         crop_coords = ((y_min, x_min), (y_max, x_max))
 
@@ -320,13 +368,13 @@ class ShorelinePredictor:
             mask_only_shoreline=True,
         )
 
-        shoreline_coords = np.column_stack(np.where(mask == 1))
-        shoreline_coords = self.format_coordinates(
-            shoreline_coords, for_matlab=for_matlab
+        shoreline_coords_pred = np.column_stack(np.where(mask == 1))
+        shoreline_coords_pred = self.format_coordinates(
+            shoreline_coords_pred, for_matlab=for_matlab
         )
 
         if extract_mask_coords:
-            pred["original_shoreline_coords"] = shoreline_coords
+            pred["original_shoreline_coords"] = shoreline_coords_pred
 
         return pred
 

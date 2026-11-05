@@ -6,6 +6,9 @@ def crop(img, position1, position2):
 
 
 def merge_masks(img1, img2, position1, position2):
+    if img2 is None:
+        return img1.copy()
+    
     merged = img1.copy()
     merged[position1[0] : position2[0], position1[1] : position2[1]] = img2
     return merged
